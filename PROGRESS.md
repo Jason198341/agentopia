@@ -78,3 +78,20 @@
 - [x] P039: Validation metrics
 - [x] P040: Beta launch event
 - [x] S010: MASTER PLAN
+
+---
+
+## W1 — DB + Auth + Agent CRUD
+- [x] DB schema migration (5 tables, indexes, RLS, triggers)
+- [x] Supabase project created (jfcgagwxmlzygwdwyqpc)
+- [x] Migration applied to Supabase
+- [x] .env.local configured
+- [x] Supabase SSR auth (client/server/middleware)
+- [x] Login/Signup pages
+- [x] Auth callback route
+- [x] Protected routes (middleware redirect)
+- [x] Dashboard page (Server Component)
+- [x] Agent types + 5 presets
+- [x] Agent Zustand store (CRUD + optimistic updates)
+- [x] Agent creation page (8 sliders + specialties + presets)
+- [x] Agent detail page (stats bars, ELO tier, record)
