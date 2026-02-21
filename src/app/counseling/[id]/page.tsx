@@ -45,26 +45,71 @@ export default async function CounselingDetailPage({
     agent_name: (postRow.agents as Record<string, string>)?.name ?? "Unknown",
   };
 
-  // Fetch responses with responder + agent info
+  // Fetch responses plain — FK hints removed after migration 010 dropped FK constraints
   const { data: responseRows } = await supabase
     .from("counseling_responses")
-    .select("*, profiles!counseling_responses_responder_id_fkey(display_name, username), agents!counseling_responses_agent_id_fkey(*)")
+    .select("*")
     .eq("post_id", id)
     .order("created_at", { ascending: true });
 
+  // Manually resolve profiles for real (non-NPC) responders
+  const realResponderIds = (responseRows ?? [])
+    .filter((r: Record<string, unknown>) => !r.is_npc)
+    .map((r: Record<string, unknown>) => r.responder_id as string)
+    .filter(Boolean);
+
+  const profileMap = new Map<string, Record<string, string>>();
+  if (realResponderIds.length > 0) {
+    const { data: profileRows } = await supabase
+      .from("profiles")
+      .select("id, display_name, username")
+      .in("id", realResponderIds);
+    for (const p of profileRows ?? []) {
+      profileMap.set(p.id as string, p as Record<string, string>);
+    }
+  }
+
+  // Manually resolve agents for non-null agent_ids
+  const agentIds = (responseRows ?? [])
+    .map((r: Record<string, unknown>) => r.agent_id as string)
+    .filter(Boolean);
+
+  const agentMap = new Map<string, Record<string, unknown>>();
+  if (agentIds.length > 0) {
+    const { data: agentRows } = await supabase
+      .from("agents")
+      .select("*")
+      .in("id", agentIds);
+    for (const a of agentRows ?? []) {
+      agentMap.set(a.id as string, a as Record<string, unknown>);
+    }
+  }
+
+  const NPC_DISPLAY: Record<string, string> = {
+    "Dr. Warm": "🤗 따뜻한마음 박사",
+    "Coach Direct": "💪 직진코치",
+    "Sage Listener": "🧘 경청현자",
+  };
+
   const responses = (responseRows ?? []).map((r: Record<string, unknown>) => {
-    const profile = r.profiles as Record<string, string> | null;
-    const agentRow = r.agents as Record<string, unknown> | null;
+    const isNpc = r.is_npc as boolean;
+    const npcName = r.npc_name as string | null;
+    const profile = isNpc ? null : (profileMap.get(r.responder_id as string) ?? null);
+    const agentRow = r.agent_id ? (agentMap.get(r.agent_id as string) ?? null) : null;
     return {
       id: r.id as string,
       post_id: r.post_id as string,
       responder_id: r.responder_id as string,
-      agent_id: r.agent_id as string,
+      agent_id: (r.agent_id as string) ?? null,
       content: r.content as string,
       is_best: r.is_best as boolean,
+      is_npc: isNpc,
+      npc_name: npcName,
       created_at: r.created_at as string,
-      responder_name: profile?.display_name ?? profile?.username ?? "익명",
-      agent_name: agentRow?.name as string ?? "Unknown",
+      responder_name: isNpc
+        ? (npcName ? NPC_DISPLAY[npcName] ?? npcName : "NPC")
+        : (profile?.display_name ?? profile?.username ?? "익명"),
+      agent_name: isNpc ? "" : (agentRow?.name as string ?? "Unknown"),
       agent: agentRow ? dbToAgent(agentRow) : null,
     };
   });

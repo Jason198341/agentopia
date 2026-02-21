@@ -9,14 +9,22 @@ interface ResponseItem {
   id: string;
   post_id: string;
   responder_id: string;
-  agent_id: string;
+  agent_id: string | null;
   content: string;
   is_best: boolean;
+  is_npc: boolean;
+  npc_name: string | null;
   created_at: string;
   responder_name: string;
   agent_name: string;
   agent: Agent | null;
 }
+
+const NPC_DISPLAY: Record<string, string> = {
+  "Dr. Warm": "🤗 따뜻한마음 박사",
+  "Coach Direct": "💪 직진코치",
+  "Sage Listener": "🧘 경청현자",
+};
 
 interface Props {
   postId: string;
@@ -64,28 +72,40 @@ export function PostDetail({
         },
         async (payload) => {
           const newRow = payload.new as Record<string, unknown>;
-          // Fetch profile + agent name for the new response
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("display_name, username")
-            .eq("id", newRow.responder_id)
-            .single();
-          const { data: agent } = await supabase
-            .from("agents")
-            .select("name")
-            .eq("id", newRow.agent_id)
-            .single();
+          const isNpc = !!newRow.is_npc;
+          const npcName = newRow.npc_name as string | null;
+
+          let responderName = "익명";
+          let agentName = "";
+
+          if (isNpc) {
+            responderName = npcName ? NPC_DISPLAY[npcName] ?? npcName : "NPC";
+          } else {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("display_name, username")
+              .eq("id", newRow.responder_id)
+              .single();
+            const agentId = newRow.agent_id as string | null;
+            const { data: agent } = agentId
+              ? await supabase.from("agents").select("name").eq("id", agentId).single()
+              : { data: null };
+            responderName = profile?.display_name ?? profile?.username ?? "익명";
+            agentName = agent?.name ?? "Unknown";
+          }
 
           const item: ResponseItem = {
             id: newRow.id as string,
             post_id: newRow.post_id as string,
             responder_id: newRow.responder_id as string,
-            agent_id: newRow.agent_id as string,
+            agent_id: (newRow.agent_id as string) ?? null,
             content: newRow.content as string,
             is_best: false,
+            is_npc: isNpc,
+            npc_name: npcName,
             created_at: newRow.created_at as string,
-            responder_name: profile?.display_name ?? profile?.username ?? "익명",
-            agent_name: agent?.name ?? "Unknown",
+            responder_name: responderName,
+            agent_name: agentName,
             agent: null,
           };
 
@@ -254,7 +274,14 @@ export function PostDetail({
                 {/* Meta + Best Selection */}
                 <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-2">
                   <div className="text-xs text-text-muted">
-                    <span>{r.responder_name}의 {r.agent_name}</span>
+                    {r.is_npc ? (
+                      <span>
+                        {r.responder_name}
+                        <span className="ml-1 rounded bg-accent/15 px-1 py-0.5 text-[10px] font-bold text-accent">NPC</span>
+                      </span>
+                    ) : (
+                      <span>{r.responder_name}의 {r.agent_name}</span>
+                    )}
                     <span className="mx-1.5">·</span>
                     <span>{getTimeAgo(r.created_at)}</span>
                   </div>
