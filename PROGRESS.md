@@ -185,4 +185,4 @@
 - [x] Battle type: added current_turn, error_message fields
 - [x] Worker: esbuild bundler (build.mjs, @/ alias resolution)
 - [x] Supabase migration applied to production (SQL Editor)
-- [ ] Railway deployment (Docker worker)
+- [x] Railway deployment (Docker worker — overflowing-connection project)
