@@ -36,9 +36,11 @@ export async function POST(
 
   // Run turns
   const currentState = game.current_state as SGGameState;
+  const snapshotTurn = game.current_turn as number;
   const { state: newState, allEvents } = await runTurns(currentState, turns);
 
-  // Update game record
+  // Optimistic lock: only update if current_turn hasn't changed since we read it.
+  // This prevents duplicate events from concurrent requests.
   const updateData: Record<string, unknown> = {
     current_state: newState,
     current_turn: newState.turn,
@@ -50,13 +52,28 @@ export async function POST(
     updateData.completed_at = new Date().toISOString();
   }
 
-  await supabase
+  const { data: updated } = await supabase
     .from('sg_games')
     .update(updateData)
-    .eq('id', id);
+    .eq('id', id)
+    .eq('current_turn', snapshotTurn)  // Only update if no concurrent write happened
+    .select('id');
 
-  // Insert turn events
-  const startTurn = currentState.turn;
+  if (!updated || updated.length === 0) {
+    // Another request already advanced the turn — return the latest state
+    const { data: latestGame } = await supabase
+      .from('sg_games').select('current_state, status, current_turn')
+      .eq('id', id).single();
+    return NextResponse.json({
+      state: latestGame?.current_state,
+      events: [],
+      completed: latestGame?.status === 'completed',
+      skipped: true,
+    }, { status: 200 });
+  }
+
+  // Insert turn events (only on successful optimistic lock)
+  const startTurn = snapshotTurn;
   const eventInserts = allEvents.map((events: TurnEvent[], i: number) => ({
     game_id: id,
     turn: startTurn + i + 1,

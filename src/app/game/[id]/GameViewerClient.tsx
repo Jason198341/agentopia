@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { GameMap } from '@/components/game/GameMap';
 import { AgentPanel } from '@/components/game/AgentPanel';
 import { TurnLog } from '@/components/game/TurnLog';
@@ -24,11 +24,15 @@ export function GameViewerClient({ gameId, initialState, initialTurnEvents }: Pr
   const [turnEvents, setTurnEvents] = useState(initialTurnEvents);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Hard lock: prevents ANY concurrent API call regardless of React rendering lag
+  const runningRef = useRef(false);
 
   const isCompleted = state.status === 'completed';
   const progress = Math.round((state.turn / state.max_turns) * 100);
 
   function handleRunTurns(count: number) {
+    if (runningRef.current) return;    // Hard lock: reject if already running
+    runningRef.current = true;
     setError(null);
     startTransition(async () => {
       const res = await fetch(`/api/game/${gameId}/run`, {
@@ -41,6 +45,7 @@ export function GameViewerClient({ gameId, initialState, initialTurnEvents }: Pr
 
       if (!res.ok) {
         setError(data.error ?? '오류가 발생했습니다.');
+        runningRef.current = false;
         return;
       }
 
@@ -54,6 +59,7 @@ export function GameViewerClient({ gameId, initialState, initialTurnEvents }: Pr
       }));
 
       setTurnEvents((prev) => [...prev, ...newTurnEvents]);
+      runningRef.current = false;
     });
   }
 
