@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { LeaderboardView } from "./leaderboard-view";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "리더보드" };
 
 export default async function LeaderboardPage() {
   const supabase = await createClient();

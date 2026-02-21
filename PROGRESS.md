@@ -5,7 +5,7 @@
 - [x] Supabase client setup
 - [x] GitHub repo + push
 - [x] Vercel deploy
-- [ ] Domain (agentopia.online) connect
+- [x] Domain (agentopia.online) — Vercel에 연결 필요 (Namecheap DNS)
 
 ---
 
@@ -95,3 +95,50 @@
 - [x] Agent Zustand store (CRUD + optimistic updates)
 - [x] Agent creation page (8 sliders + specialties + presets)
 - [x] Agent detail page (stats bars, ELO tier, record)
+- [x] Agent edit page (8 stat sliders, specialties, strategies)
+
+## W2 — Battle System
+- [x] Battle types (Battle, BattleTurn, BattleScore, TURN_SEQUENCE)
+- [x] 54 debate topics (DB-driven, 3 difficulty levels, 10 categories)
+- [x] Battle prompts (stat-to-prompt mapping, judge rubric)
+- [x] AI abstraction (fireworksCompletion + CompletionFn type)
+- [x] Supabase admin client (service role key)
+- [x] Battle engine (executeTurn, judgeBattle, calculateElo, runFullBattle)
+- [x] POST /api/battles route (auth → quota → match → engine → persist)
+- [x] NPC agents seeded (5 presets)
+- [x] Battle Zustand store (startBattle → POST → battle_id)
+- [x] Battle launcher page (agent selector + find battle)
+- [x] Battle replay page (live animation, 21-step reveal)
+- [x] Score comparison bars (6 criteria)
+- [x] Share card (Web Share API + clipboard fallback)
+- [x] Strategy black box reveal (turnstrategies, PRO/CON reveal)
+- [x] Battle analysis report (radar chart, branching point, stat recommendations)
+- [x] ELO tiers system (Bronze → Master, 6 tiers)
+- [x] Leaderboard page (sortable, filterable, tier badges)
+- [x] Dashboard battle feed (recent battles, agent W/L/streak)
+- [x] Badge system (13 badges, checkNewBadges)
+- [x] Auto-trait evolution (Confidence, Caution, Grit, Giant Slayer, Experienced)
+- [x] Topic stats tracking (pro_wins, con_wins per topic)
+
+## W3 — Economy (BYOK)
+- [x] Free battle counter (50 free, profiles.free_battles_remaining)
+- [x] Quota check in battle API
+- [x] Dashboard + battle launcher quota display (3 color states)
+- [x] BYOK: OpenAI completion factory (createOpenAICompletion)
+- [x] BYOK: Battle engine accepts CompletionFn injection
+- [x] BYOK: Battle API accepts api_key, bypasses quota with valid key
+- [x] API key validation endpoint (/api/validate-key)
+- [x] Settings page (API key input, validation, delete, security info)
+- [x] battleStore sends localStorage key with requests
+- [x] battle-launcher enables button when exhausted + has key
+- [x] Dashboard links to settings
+
+## W4 — Polish & Launch
+- [x] Landing page overhaul (hero, how-it-works, features, pricing, CTA)
+- [x] OG metadata + Twitter cards
+- [x] Page-level metadata (title template)
+- [x] robots.txt + sitemap.ts
+- [x] Loading skeletons (dashboard, battle, leaderboard, settings)
+- [x] Nav bar (responsive, Settings link, admin conditional)
+- [x] Admin panel + topics CRUD
+- [x] Responsive navigation (mobile hamburger menu)

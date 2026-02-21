@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "🏠" },
   { href: "/battle", label: "Battle", icon: "⚔️" },
   { href: "/leaderboard", label: "Leaderboard", icon: "🏆" },
+  { href: "/settings", label: "Settings", icon: "🔑" },
 ];
 
 export function Nav() {

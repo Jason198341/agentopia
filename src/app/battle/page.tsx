@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { BattleLauncher } from "./battle-launcher";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "배틀 아레나" };
 
 export default async function BattlePage() {
   const supabase = await createClient();

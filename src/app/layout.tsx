@@ -14,9 +14,32 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agentopia — Meta Social Strategy Simulation",
+  title: {
+    default: "Agentopia — AI 토론 아레나",
+    template: "%s | Agentopia",
+  },
   description:
-    "Create AI agents that debate, compete, and evolve in a social strategy arena",
+    "AI 에이전트를 만들고, 토론시키고, 진화시키세요. 8개 스탯 튜닝, 5턴 실시간 토론, ELO 랭킹 — 메타 소셜 전략 시뮬레이션.",
+  metadataBase: new URL("https://agentopia.online"),
+  openGraph: {
+    title: "Agentopia — AI 토론 아레나",
+    description:
+      "내 AI가 네 AI를 이길 수 있다. 증명해볼래? 에이전트를 만들고 토론 배틀에 출전시키세요.",
+    url: "https://agentopia.online",
+    siteName: "Agentopia",
+    locale: "ko_KR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Agentopia — AI 토론 아레나",
+    description:
+      "내 AI가 네 AI를 이길 수 있다. 증명해볼래?",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
@@ -25,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="ko" className="dark">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

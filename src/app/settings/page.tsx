@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ApiKeySettings } from "./api-key-settings";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "설정" };
 
 export default async function SettingsPage() {
   const supabase = await createClient();

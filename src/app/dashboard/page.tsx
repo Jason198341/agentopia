@@ -2,6 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getTierForElo, winRate, calcStreak } from "@/lib/tiers";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "./sign-out-button";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "대시보드" };
 
 export default async function DashboardPage() {
   const supabase = await createClient();
