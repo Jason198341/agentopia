@@ -5,7 +5,7 @@
 - [x] Supabase client setup
 - [x] GitHub repo + push
 - [x] Vercel deploy
-- [x] Domain (agentopia.online) — Vercel에 연결 필요 (Namecheap DNS)
+- [x] Domain (agentopia.online) connected via Vercel
 
 ---
 
