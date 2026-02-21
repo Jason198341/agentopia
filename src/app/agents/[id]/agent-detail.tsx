@@ -9,6 +9,7 @@ import {
   SPECIALTY_LABELS,
   type Specialty,
 } from "@/types/agent";
+import { BADGE_MAP } from "@/types/badge";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -21,12 +22,26 @@ function eloTier(elo: number) {
   return { name: "Iron", color: "text-stone-500" };
 }
 
+type BattleHistoryItem = {
+  id: string;
+  opponent: string;
+  topic: string;
+  category: string;
+  result: "win" | "loss" | "draw";
+  myScore: number;
+  theirScore: number;
+  eloChange: number;
+  date: string | null;
+};
+
 export function AgentDetail({
   agent,
   isOwner,
+  battleHistory,
 }: {
   agent: Agent;
   isOwner: boolean;
+  battleHistory: BattleHistoryItem[];
 }) {
   const router = useRouter();
   const { deleteAgent } = useAgentStore();
@@ -84,6 +99,33 @@ export function AgentDetail({
           </div>
         </section>
 
+        {/* Badges */}
+        {(() => {
+          const badges: string[] = (agent.traits._badges as unknown as string[]) ?? [];
+          return badges.length > 0 ? (
+            <section className="mt-6">
+              <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
+                Badges
+              </h2>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {badges.map((badgeId) => {
+                  const badge = BADGE_MAP[badgeId];
+                  if (!badge) return null;
+                  return (
+                    <span
+                      key={badgeId}
+                      className="rounded-full bg-warning/10 px-3 py-1 text-sm text-warning"
+                      title={badge.description}
+                    >
+                      {badge.emoji} {badge.name}
+                    </span>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null;
+        })()}
+
         {/* Specialties */}
         {agent.specialties.length > 0 && (
           <section className="mt-6">
@@ -106,24 +148,92 @@ export function AgentDetail({
           </section>
         )}
 
-        {/* Traits */}
-        {Object.keys(agent.traits).length > 0 && (
+        {/* Evolved Traits (auto-earned from battles) */}
+        {(() => {
+          const traitEntries = Object.entries(agent.traits).filter(
+            ([key]) => key !== "_badges",
+          );
+          const TRAIT_META: Record<string, { emoji: string; desc: string }> = {
+            Confidence: { emoji: "💪", desc: "Earned from a 5-win streak" },
+            Caution: { emoji: "🛡️", desc: "Earned from 3 consecutive losses" },
+            Grit: { emoji: "🦾", desc: "Earned from a comeback win" },
+            "Giant Slayer": { emoji: "⚔️", desc: "Beat a much stronger opponent" },
+            Experienced: { emoji: "🎖️", desc: "Completed 10+ battles" },
+          };
+          return traitEntries.length > 0 ? (
+            <section className="mt-6">
+              <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
+                Evolved Traits
+              </h2>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {traitEntries.map(([trait, value]) => {
+                  const meta = TRAIT_META[trait];
+                  return (
+                    <span
+                      key={trait}
+                      className={`rounded-full px-3 py-1 text-sm ${
+                        Number(value) > 0
+                          ? "bg-accent/15 text-accent"
+                          : "bg-danger/15 text-danger"
+                      }`}
+                      title={meta?.desc ?? ""}
+                    >
+                      {meta?.emoji ?? "✨"} {trait}
+                    </span>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null;
+        })()}
+
+        {/* Battle History */}
+        {battleHistory.length > 0 && (
           <section className="mt-6">
             <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
-              Evolved Traits
+              Recent Battles
             </h2>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {Object.entries(agent.traits).map(([trait, value]) => (
-                <span
-                  key={trait}
-                  className={`rounded-full px-3 py-1 text-sm ${
-                    value > 0
-                      ? "bg-success/15 text-success"
-                      : "bg-danger/15 text-danger"
-                  }`}
+            <div className="mt-3 space-y-2">
+              {battleHistory.map((b) => (
+                <a
+                  key={b.id}
+                  href={`/battle/${b.id}`}
+                  className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3 transition hover:bg-surface-hover"
                 >
-                  {trait} {value > 0 ? `+${value}` : value}
-                </span>
+                  <span
+                    className={`w-8 text-center text-xs font-bold uppercase ${
+                      b.result === "win"
+                        ? "text-success"
+                        : b.result === "loss"
+                          ? "text-danger"
+                          : "text-text-muted"
+                    }`}
+                  >
+                    {b.result === "win" ? "W" : b.result === "loss" ? "L" : "D"}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-text">
+                      vs {b.opponent}
+                    </p>
+                    <p className="truncate text-xs text-text-muted">{b.topic}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-mono text-text">
+                      {b.myScore}–{b.theirScore}
+                    </p>
+                    <p
+                      className={`text-xs font-mono font-bold ${
+                        b.eloChange > 0
+                          ? "text-success"
+                          : b.eloChange < 0
+                            ? "text-danger"
+                            : "text-text-muted"
+                      }`}
+                    >
+                      {b.eloChange > 0 ? `+${b.eloChange}` : b.eloChange}
+                    </p>
+                  </div>
+                </a>
               ))}
             </div>
           </section>

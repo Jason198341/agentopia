@@ -4,6 +4,7 @@ import { dbToAgent } from "@/types/agent";
 import { TURN_SEQUENCE } from "@/types/battle";
 import { pickRandomTopic } from "@/data/topics";
 import { runFullBattle } from "@/lib/battle-engine";
+import { checkNewBadges } from "@/types/badge";
 import { NextResponse } from "next/server";
 
 // NPC system user ID — matches the seed script
@@ -41,25 +42,40 @@ export async function POST(request: Request) {
   }
   const playerAgent = dbToAgent(agentRow);
 
-  // 4. Find NPC opponent (ELO ±200, not owned by player)
-  let opponentQuery = admin
+  // 4. Find opponent — try PvP first, then NPC fallback
+  // Step A: Look for real player agents within ELO ±200 (exclude same owner)
+  let { data: pvpCandidates } = await admin
     .from("agents")
     .select("*")
-    .eq("owner_id", NPC_OWNER_ID)
+    .neq("owner_id", user.id) // not same owner
+    .neq("owner_id", NPC_OWNER_ID) // not NPC
+    .eq("is_active", true)
     .gte("elo", playerAgent.elo - 200)
     .lte("elo", playerAgent.elo + 200)
     .limit(10);
 
-  let { data: opponents } = await opponentQuery;
+  let opponents = pvpCandidates && pvpCandidates.length > 0 ? pvpCandidates : null;
 
-  // Fallback: any NPC if no close-ELO match
-  if (!opponents || opponents.length === 0) {
-    const { data: fallback } = await admin
+  // Step B: Fallback to NPC agents (ELO ±200)
+  if (!opponents) {
+    const { data: npcClose } = await admin
+      .from("agents")
+      .select("*")
+      .eq("owner_id", NPC_OWNER_ID)
+      .gte("elo", playerAgent.elo - 200)
+      .lte("elo", playerAgent.elo + 200)
+      .limit(10);
+    opponents = npcClose && npcClose.length > 0 ? npcClose : null;
+  }
+
+  // Step C: Fallback to any NPC
+  if (!opponents) {
+    const { data: npcAny } = await admin
       .from("agents")
       .select("*")
       .eq("owner_id", NPC_OWNER_ID)
       .limit(10);
-    opponents = fallback;
+    opponents = npcAny && npcAny.length > 0 ? npcAny : null;
   }
 
   if (!opponents || opponents.length === 0) {
@@ -189,6 +205,78 @@ export async function POST(request: Request) {
       },
     ]);
 
+    // 13. Award badges for the player's agent
+    const playerIsA = agentA.id === playerAgent.id;
+    const playerWon = result.winner_id === playerAgent.id;
+    const playerScoreTotal = playerIsA
+      ? result.judgeResult.score_a.total
+      : result.judgeResult.score_b.total;
+    const opponentScoreTotal = playerIsA
+      ? result.judgeResult.score_b.total
+      : result.judgeResult.score_a.total;
+
+    // Fetch recent battle results for streak calculation
+    const { data: recentBattles } = await admin
+      .from("battles")
+      .select("winner_id, agent_a_id, agent_b_id")
+      .or(`agent_a_id.eq.${playerAgent.id},agent_b_id.eq.${playerAgent.id}`)
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false })
+      .limit(15);
+
+    const recentResults: ("win" | "loss")[] = (recentBattles ?? []).map((b) =>
+      b.winner_id === playerAgent.id ? "win" : "loss",
+    );
+
+    const existingBadges: string[] = (playerAgent.traits._badges as unknown as string[]) ?? [];
+    const newBadges = checkNewBadges(existingBadges, {
+      won: playerWon,
+      totalWins: playerAgent.wins + (playerWon ? 1 : 0),
+      totalBattles: playerAgent.wins + playerAgent.losses + 1,
+      winMargin: playerScoreTotal - opponentScoreTotal,
+      opponentElo: opponentAgent.elo,
+      agentElo: playerAgent.elo,
+      recentResults,
+    });
+
+    // 14. Auto-trait evolution (P015)
+    const totalBattles = playerAgent.wins + playerAgent.losses + 1;
+    const currentTraits = { ...playerAgent.traits };
+    const streak = countStreak(recentResults);
+
+    // 5 win streak → "Confidence" trait (+1 boldness flavor)
+    if (streak >= 5 && !currentTraits["Confidence"]) {
+      currentTraits["Confidence"] = 1;
+    }
+    // 3 loss streak → "Caution" trait (defensive adaptation)
+    const lossStreak = countLossStreak(recentResults);
+    if (lossStreak >= 3 && !currentTraits["Caution"]) {
+      currentTraits["Caution"] = 1;
+    }
+    // Comeback win (win after 3+ losses) → "Grit"
+    if (playerWon && recentResults.length >= 2 && recentResults[1] === "loss" && !currentTraits["Grit"]) {
+      const prevLosses = recentResults.slice(1).findIndex((r) => r === "win");
+      if (prevLosses >= 2) currentTraits["Grit"] = 1;
+    }
+    // Beat opponent 200+ ELO higher → "Giant Slayer" trait
+    if (playerWon && opponentAgent.elo - playerAgent.elo >= 200 && !currentTraits["Giant Slayer"]) {
+      currentTraits["Giant Slayer"] = 1;
+    }
+    // 10+ battles → experience marker
+    if (totalBattles >= 10 && !currentTraits["Experienced"]) {
+      currentTraits["Experienced"] = 1;
+    }
+
+    // Merge badges into traits
+    const updatedBadges = [...existingBadges, ...newBadges];
+    if (newBadges.length > 0 || JSON.stringify(currentTraits) !== JSON.stringify(playerAgent.traits)) {
+      currentTraits._badges = updatedBadges as unknown as number;
+      await admin
+        .from("agents")
+        .update({ traits: currentTraits })
+        .eq("id", playerAgent.id);
+    }
+
     return NextResponse.json({ battle_id: battleId });
   } catch (err) {
     // Mark battle as aborted on error
@@ -203,4 +291,22 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
+
+function countStreak(results: ("win" | "loss")[]): number {
+  let streak = 0;
+  for (const r of results) {
+    if (r === "win") streak++;
+    else break;
+  }
+  return streak;
+}
+
+function countLossStreak(results: ("win" | "loss")[]): number {
+  let streak = 0;
+  for (const r of results) {
+    if (r === "loss") streak++;
+    else break;
+  }
+  return streak;
 }
