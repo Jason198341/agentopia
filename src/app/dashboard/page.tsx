@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTierForElo, winRate, calcStreak } from "@/lib/tiers";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "./sign-out-button";
 
@@ -25,6 +26,28 @@ export default async function DashboardPage() {
     .order("elo", { ascending: false });
 
   const myAgentIds = (agents ?? []).map((a) => a.id);
+
+  // Fetch per-agent streak from their recent battles
+  let agentStreaks: Record<string, { type: "win" | "loss" | "none"; count: number }> = {};
+  if (myAgentIds.length > 0) {
+    const { data: myBattleRows } = await supabase
+      .from("battles")
+      .select("agent_a_id, agent_b_id, winner_id")
+      .eq("status", "completed")
+      .or(myAgentIds.map((id) => `agent_a_id.eq.${id},agent_b_id.eq.${id}`).join(","))
+      .order("completed_at", { ascending: false })
+      .limit(50);
+
+    for (const agentId of myAgentIds) {
+      const results = (myBattleRows ?? [])
+        .filter((b) => b.agent_a_id === agentId || b.agent_b_id === agentId)
+        .map((b): "win" | "loss" | "draw" => {
+          if (!b.winner_id) return "draw";
+          return b.winner_id === agentId ? "win" : "loss";
+        });
+      agentStreaks[agentId] = calcStreak(results);
+    }
+  }
 
   // Fetch recent battles (global, last 15)
   const { data: recentBattleRows } = await supabase
@@ -116,26 +139,42 @@ export default async function DashboardPage() {
             </div>
           ) : (
             <div className="mt-4 space-y-3">
-              {agents.map((agent) => (
-                <a
-                  key={agent.id}
-                  href={`/agents/${agent.id}`}
-                  className="flex items-center justify-between rounded-xl border border-border bg-surface p-4 transition hover:bg-surface-hover"
-                >
-                  <div>
-                    <p className="font-medium text-text">{agent.name}</p>
-                    <p className="text-sm text-text-muted">
-                      {agent.wins}승 {agent.losses}패
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-primary">
-                      {agent.elo}
-                    </p>
-                    <p className="text-xs text-text-muted">ELO</p>
-                  </div>
-                </a>
-              ))}
+              {agents.map((agent) => {
+                const tier = getTierForElo(agent.elo);
+                const wr = winRate(agent.wins, agent.losses);
+                const streak = agentStreaks[agent.id];
+                return (
+                  <a
+                    key={agent.id}
+                    href={`/agents/${agent.id}`}
+                    className="flex items-center justify-between rounded-xl border border-border bg-surface p-4 transition hover:bg-surface-hover"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-text">{agent.name}</p>
+                        <span className={`text-xs font-medium ${tier.color}`}>
+                          {tier.emoji} {tier.ko}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-text-muted">
+                        <span>{agent.wins}승 {agent.losses}패</span>
+                        <span>({wr}%)</span>
+                        {streak && streak.count >= 2 && (
+                          <span className={streak.type === "win" ? "text-success" : "text-danger"}>
+                            {streak.type === "win" ? "🔥" : "❄️"}{streak.count}연{streak.type === "win" ? "승" : "패"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-primary">
+                        {agent.elo}
+                      </p>
+                      <p className="text-xs text-text-muted">ELO</p>
+                    </div>
+                  </a>
+                );
+              })}
             </div>
           )}
         </section>

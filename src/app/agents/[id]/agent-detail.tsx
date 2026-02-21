@@ -22,17 +22,9 @@ import {
 } from "@/types/agent";
 import { BADGE_MAP } from "@/types/badge";
 import { STAT_PROMPTS, tier as statTier } from "@/data/prompts/battle";
+import { getTierForElo, winRate as calcWinRate, calcStreak } from "@/lib/tiers";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-
-function eloTier(elo: number) {
-  if (elo >= 2000) return { name: "다이아몬드", color: "text-cyan-300" };
-  if (elo >= 1600) return { name: "플래티넘", color: "text-slate-300" };
-  if (elo >= 1300) return { name: "골드", color: "text-yellow-400" };
-  if (elo >= 1100) return { name: "실버", color: "text-gray-400" };
-  if (elo >= 900) return { name: "브론즈", color: "text-amber-600" };
-  return { name: "아이언", color: "text-stone-500" };
-}
 
 type CriteriaScores = {
   logic: number;
@@ -76,9 +68,12 @@ export function AgentDetail({
   const router = useRouter();
   const { deleteAgent } = useAgentStore();
   const [deleting, setDeleting] = useState(false);
-  const tier = eloTier(agent.elo);
-  const totalGames = agent.wins + agent.losses;
-  const winRate = totalGames > 0 ? ((agent.wins / totalGames) * 100).toFixed(1) : "—";
+  const tier = getTierForElo(agent.elo);
+  const winRate = calcWinRate(agent.wins, agent.losses);
+
+  // Calculate streak from battle history (already sorted newest first)
+  const streakResults = battleHistory.map((b) => b.result);
+  const streak = calcStreak(streakResults);
 
   async function handleDelete() {
     if (!confirm("이 에이전트를 삭제하시겠습니까? 되돌릴 수 없습니다.")) return;
@@ -102,15 +97,20 @@ export function AgentDetail({
           </div>
           <div className="text-right">
             <p className="text-3xl font-bold text-primary">{agent.elo}</p>
-            <p className={`text-sm font-medium ${tier.color}`}>{tier.name}</p>
+            <p className={`text-sm font-medium ${tier.color}`}>{tier.emoji} {tier.ko}</p>
           </div>
         </div>
 
         {/* Record */}
-        <div className="mt-6 grid grid-cols-3 gap-3">
+        <div className="mt-6 grid grid-cols-4 gap-3">
           <StatCard label="승" value={String(agent.wins)} color="text-success" />
           <StatCard label="패" value={String(agent.losses)} color="text-danger" />
           <StatCard label="승률" value={`${winRate}%`} color="text-accent" />
+          <StatCard
+            label={streak.type === "win" ? "연승" : streak.type === "loss" ? "연패" : "연속"}
+            value={streak.count >= 2 ? `${streak.type === "win" ? "🔥" : "❄️"}${streak.count}` : "—"}
+            color={streak.type === "win" ? "text-success" : streak.type === "loss" ? "text-danger" : "text-text-muted"}
+          />
         </div>
 
         {/* ELO Trend Graph */}

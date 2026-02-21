@@ -1,10 +1,11 @@
 "use client";
 
-import type { Agent, AgentStats } from "@/types/agent";
-import { STAT_LABELS } from "@/types/agent";
+import type { Agent, AgentStats, TurnStrategies } from "@/types/agent";
+import { STAT_LABELS, getTurnStrategies, TURN_LABELS as STRATEGY_TURN_LABELS } from "@/types/agent";
 import type { Battle, BattleTurn, BattleScore } from "@/types/battle";
 import { TURN_SEQUENCE } from "@/types/battle";
 import { DEBATE_TOPICS, type TopicDifficulty } from "@/data/topics";
+import { getTierForElo } from "@/lib/tiers";
 import { useState, useEffect, useCallback } from "react";
 
 interface Props {
@@ -123,13 +124,23 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
           <div className="text-center">
             <p className="text-sm font-medium text-success">찬성</p>
             <p className="font-bold text-text">{agentA.name}</p>
-            <p className="text-xs text-text-muted">ELO {agentA.elo}</p>
+            <p className="text-xs text-text-muted">
+              ELO {agentA.elo}
+              <span className={`ml-1 ${getTierForElo(agentA.elo).color}`}>
+                {getTierForElo(agentA.elo).emoji}
+              </span>
+            </p>
           </div>
           <p className="text-2xl font-bold text-text-muted">VS</p>
           <div className="text-center">
             <p className="text-sm font-medium text-danger">반대</p>
             <p className="font-bold text-text">{agentB.name}</p>
-            <p className="text-xs text-text-muted">ELO {agentB.elo}</p>
+            <p className="text-xs text-text-muted">
+              ELO {agentB.elo}
+              <span className={`ml-1 ${getTierForElo(agentB.elo).color}`}>
+                {getTierForElo(agentB.elo).emoji}
+              </span>
+            </p>
           </div>
         </div>
       </div>
@@ -284,6 +295,9 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
               대시보드
             </a>
           </div>
+
+          {/* Strategy Reveal — Black Box opened after battle */}
+          <StrategyReveal agentA={agentA} agentB={agentB} userId={userId} />
 
           {/* Post-Battle Analysis Report */}
           {userAgent && (
@@ -850,5 +864,118 @@ function LiveDot() {
       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-danger opacity-75" />
       <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-danger" />
     </span>
+  );
+}
+
+// ─── Strategy Black Box Reveal ───
+
+const TURN_KEYS = ["turn_1", "turn_2", "turn_3", "turn_4", "turn_5"] as const;
+
+function StrategyReveal({
+  agentA,
+  agentB,
+  userId,
+}: {
+  agentA: Agent;
+  agentB: Agent;
+  userId: string;
+}) {
+  const [revealed, setRevealed] = useState(false);
+
+  const strategiesA = getTurnStrategies(agentA);
+  const strategiesB = getTurnStrategies(agentB);
+
+  // Nothing to show if neither agent has strategies
+  if (!strategiesA && !strategiesB) return null;
+
+  // Determine which agent is "mine" vs "opponent"
+  const userOwnsA = agentA.owner_id === userId;
+  const userOwnsB = agentB.owner_id === userId;
+  const myStrategies = userOwnsA ? strategiesA : userOwnsB ? strategiesB : null;
+  const myName = userOwnsA ? agentA.name : userOwnsB ? agentB.name : null;
+  const opponentStrategies = userOwnsA ? strategiesB : strategiesA;
+  const opponentName = userOwnsA ? agentB.name : agentA.name;
+
+  return (
+    <div className="mt-6">
+      <button
+        onClick={() => setRevealed(!revealed)}
+        className="w-full rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-left transition hover:bg-primary/10"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-primary">
+              전략 공개
+            </span>
+            <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+              BLACK BOX
+            </span>
+          </div>
+          <span className="text-xs text-text-muted">{revealed ? "▲" : "▼"}</span>
+        </div>
+        <p className="mt-1 text-xs text-text-muted">
+          {revealed
+            ? "양측의 턴별 전략을 확인하세요."
+            : "배틀이 끝났습니다. 상대의 전략을 열어볼까요?"}
+        </p>
+      </button>
+
+      {revealed && (
+        <div className="mt-3 space-y-4">
+          {/* My strategy (if exists) */}
+          {myStrategies && myName && (
+            <div className="rounded-xl border border-success/20 bg-success/5 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-success">
+                내 전략 — {myName}
+              </p>
+              <div className="mt-2 space-y-1.5">
+                {TURN_KEYS.map((key) => {
+                  const text = myStrategies[key];
+                  if (!text || !text.trim()) return null;
+                  return (
+                    <div key={key} className="rounded-lg bg-surface/50 px-3 py-1.5">
+                      <span className="text-[10px] font-bold text-success">
+                        {STRATEGY_TURN_LABELS[key].ko}
+                      </span>
+                      <p className="text-xs text-text-muted">{text}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Opponent strategy (the reveal!) */}
+          {opponentStrategies && (
+            <div className="rounded-xl border border-danger/20 bg-danger/5 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-danger">
+                상대 전략 — {opponentName}
+              </p>
+              <div className="mt-2 space-y-1.5">
+                {TURN_KEYS.map((key) => {
+                  const text = opponentStrategies[key];
+                  if (!text || !text.trim()) return null;
+                  return (
+                    <div key={key} className="rounded-lg bg-surface/50 px-3 py-1.5">
+                      <span className="text-[10px] font-bold text-danger">
+                        {STRATEGY_TURN_LABELS[key].ko}
+                      </span>
+                      <p className="text-xs text-text-muted">{text}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* No strategies case */}
+          {!myStrategies && !opponentStrategies && (
+            <p className="text-center text-sm text-text-muted">
+              이 배틀에는 턴별 전략이 설정되지 않았습니다.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

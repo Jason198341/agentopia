@@ -1,27 +1,19 @@
 "use client";
 
+import { TIERS as TIER_LIST, getTierForElo } from "@/lib/tiers";
 import { useState } from "react";
 
-type Tier = "all" | "diamond" | "platinum" | "gold" | "silver" | "bronze" | "iron";
+type TierFilter = "all" | "diamond" | "platinum" | "gold" | "silver" | "bronze" | "iron";
 
-const TIERS: { key: Tier; label: string; min: number; max: number; color: string }[] = [
-  { key: "all", label: "전체", min: 0, max: 99999, color: "text-text" },
-  { key: "diamond", label: "다이아몬드", min: 2000, max: 99999, color: "text-cyan-300" },
-  { key: "platinum", label: "플래티넘", min: 1600, max: 1999, color: "text-slate-300" },
-  { key: "gold", label: "골드", min: 1300, max: 1599, color: "text-yellow-400" },
-  { key: "silver", label: "실버", min: 1100, max: 1299, color: "text-gray-400" },
-  { key: "bronze", label: "브론즈", min: 900, max: 1099, color: "text-amber-600" },
-  { key: "iron", label: "아이언", min: 0, max: 899, color: "text-stone-500" },
+const FILTER_TIERS: { key: TierFilter; label: string; min: number; max: number }[] = [
+  { key: "all", label: "전체", min: 0, max: 99999 },
+  ...TIER_LIST.map((t, i) => ({
+    key: t.id as TierFilter,
+    label: `${t.emoji} ${t.ko}`,
+    min: t.min,
+    max: i === 0 ? 99999 : TIER_LIST[i - 1].min - 1,
+  })),
 ];
-
-function getTier(elo: number) {
-  if (elo >= 2000) return TIERS[1]; // diamond
-  if (elo >= 1600) return TIERS[2]; // platinum
-  if (elo >= 1300) return TIERS[3]; // gold
-  if (elo >= 1100) return TIERS[4]; // silver
-  if (elo >= 900) return TIERS[5]; // bronze
-  return TIERS[6]; // iron
-}
 
 interface LeaderboardEntry {
   rank: number;
@@ -36,14 +28,14 @@ interface LeaderboardEntry {
 }
 
 export function LeaderboardView({ entries }: { entries: LeaderboardEntry[] }) {
-  const [filter, setFilter] = useState<Tier>("all");
+  const [filter, setFilter] = useState<TierFilter>("all");
 
   const filtered =
     filter === "all"
       ? entries
       : entries.filter((e) => {
-          const tier = TIERS.find((t) => t.key === filter)!;
-          return e.elo >= tier.min && e.elo <= tier.max;
+          const f = FILTER_TIERS.find((t) => t.key === filter)!;
+          return e.elo >= f.min && e.elo <= f.max;
         });
 
   return (
@@ -60,7 +52,7 @@ export function LeaderboardView({ entries }: { entries: LeaderboardEntry[] }) {
 
       {/* Tier Filters */}
       <div className="mt-4 flex flex-wrap gap-2">
-        {TIERS.map((tier) => (
+        {FILTER_TIERS.map((tier) => (
           <button
             key={tier.key}
             onClick={() => setFilter(tier.key)}
@@ -89,7 +81,7 @@ export function LeaderboardView({ entries }: { entries: LeaderboardEntry[] }) {
           </thead>
           <tbody>
             {filtered.map((entry) => {
-              const tier = getTier(entry.elo);
+              const tier = getTierForElo(entry.elo);
               const totalGames = entry.wins + entry.losses;
               const winRate = totalGames > 0 ? ((entry.wins / totalGames) * 100).toFixed(0) : "—";
               return (
@@ -136,7 +128,7 @@ export function LeaderboardView({ entries }: { entries: LeaderboardEntry[] }) {
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <p className="font-mono text-sm font-bold text-text">{entry.elo}</p>
-                    <p className={`text-[10px] font-medium ${tier.color}`}>{tier.label}</p>
+                    <p className={`text-[10px] font-medium ${tier.color}`}>{tier.emoji} {tier.ko}</p>
                   </td>
                   <td className="px-3 py-2.5 text-right hidden sm:table-cell">
                     <span className="text-sm text-text">
