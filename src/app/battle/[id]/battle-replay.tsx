@@ -5,7 +5,7 @@ import { STAT_LABELS } from "@/types/agent";
 import type { Battle, BattleTurn, BattleScore } from "@/types/battle";
 import { TURN_SEQUENCE } from "@/types/battle";
 import { DEBATE_TOPICS, type TopicDifficulty } from "@/data/topics";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface Props {
   battle: Battle;
@@ -13,6 +13,22 @@ interface Props {
   agentA: Agent; // PRO
   agentB: Agent; // CON
   userId: string;
+}
+
+// Live replay step mapping:
+// Step 0: nothing (initial)
+// Steps 1-4: Turn 1 (1=thinking-pro, 2=pro-revealed, 3=thinking-con, 4=con-revealed)
+// Steps 5-8: Turn 2 ... Steps 17-20: Turn 5
+// Step 21: scores revealed
+const TOTAL_STEPS = 21;
+function turnForStep(step: number) { return Math.ceil(step / 4); }
+function phaseForStep(step: number): "thinking-pro" | "pro" | "thinking-con" | "con" | "scores" {
+  if (step >= TOTAL_STEPS) return "scores";
+  const mod = ((step - 1) % 4) + 1;
+  if (mod === 1) return "thinking-pro";
+  if (mod === 2) return "pro";
+  if (mod === 3) return "thinking-con";
+  return "con";
 }
 
 const TURN_LABELS: Record<string, string> = {
@@ -31,16 +47,39 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
     return { turnNumber: seq.turn, type: seq.type, pro, con };
   });
 
-  const [revealedTurn, setRevealedTurn] = useState(1);
-  const [showScores, setShowScores] = useState(false);
-  const allRevealed = revealedTurn > 5;
+  // Live replay state
+  const [step, setStep] = useState(0);
+  const [isLive, setIsLive] = useState(true);
+  const showScores = step >= TOTAL_STEPS;
+  const currentPhase = phaseForStep(step);
+  const currentTurn = turnForStep(step);
 
-  function handleNext() {
-    if (revealedTurn <= 5) {
-      setRevealedTurn((t) => t + 1);
+  // Auto-advance in live mode
+  useEffect(() => {
+    if (!isLive || step >= TOTAL_STEPS) return;
+    if (step === 0) {
+      // Start immediately
+      const t = setTimeout(() => setStep(1), 300);
+      return () => clearTimeout(t);
     }
-    if (revealedTurn === 5) {
-      setShowScores(true);
+    const phase = phaseForStep(step);
+    const delay = phase === "thinking-pro" || phase === "thinking-con" ? 1500 : 1000;
+    const t = setTimeout(() => setStep((s) => s + 1), delay);
+    return () => clearTimeout(t);
+  }, [isLive, step]);
+
+  // Skip to end
+  const skipToEnd = useCallback(() => {
+    setIsLive(false);
+    setStep(TOTAL_STEPS);
+  }, []);
+
+  // Manual next (when not in live mode)
+  function handleNext() {
+    if (step < TOTAL_STEPS) {
+      // Jump to next turn's con-revealed (skip thinking animations)
+      const nextTurnEnd = Math.min(Math.ceil(step / 4) * 4 + 4, TOTAL_STEPS);
+      setStep(nextTurnEnd);
     }
   }
 
@@ -104,16 +143,28 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
       {/* Turns */}
       <div className="mt-6 space-y-4">
         {turnPairs.map((pair) => {
-          if (pair.turnNumber > revealedTurn) return null;
+          const turnStart = (pair.turnNumber - 1) * 4 + 1;
+          if (step < turnStart) return null;
+
+          const proVisible = step >= turnStart + 1;
+          const proThinking = step === turnStart && isLive;
+          const conVisible = step >= turnStart + 3;
+          const conThinking = step === turnStart + 2 && isLive;
+
           return (
-            <div key={pair.turnNumber} className="space-y-2">
+            <div key={pair.turnNumber} className="space-y-2 anim-fade-in">
               <p className="text-center text-xs font-medium uppercase tracking-wider text-text-muted">
                 {pair.turnNumber}턴 &mdash; {TURN_LABELS[pair.type]}
               </p>
 
+              {/* PRO thinking */}
+              {proThinking && (
+                <ThinkingBubble name={agentA.name} side="pro" />
+              )}
+
               {/* PRO message */}
-              {pair.pro && (
-                <div className="rounded-xl border border-success/20 bg-success/5 p-4">
+              {proVisible && pair.pro && (
+                <div className="rounded-xl border border-success/20 bg-success/5 p-4 anim-slide-left">
                   <p className="mb-1 text-xs font-medium text-success">
                     {agentA.name} (찬성)
                   </p>
@@ -123,9 +174,14 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
                 </div>
               )}
 
+              {/* CON thinking */}
+              {conThinking && (
+                <ThinkingBubble name={agentB.name} side="con" />
+              )}
+
               {/* CON message */}
-              {pair.con && (
-                <div className="rounded-xl border border-danger/20 bg-danger/5 p-4">
+              {conVisible && pair.con && (
+                <div className="rounded-xl border border-danger/20 bg-danger/5 p-4 anim-slide-right">
                   <p className="mb-1 text-xs font-medium text-danger">
                     {agentB.name} (반대)
                   </p>
@@ -139,16 +195,31 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
         })}
       </div>
 
-      {/* Next Turn Button */}
-      {!allRevealed && !isAborted && (
-        <button
-          onClick={handleNext}
-          className="mt-6 w-full rounded-xl border border-primary/30 bg-primary-dim py-3 font-medium text-primary transition hover:bg-primary/20"
-        >
-          {revealedTurn <= 5
-            ? `다음 턴 (${revealedTurn}/5)`
-            : "점수 공개"}
-        </button>
+      {/* Live controls */}
+      {!showScores && !isAborted && (
+        <div className="mt-6 flex gap-3">
+          {isLive ? (
+            <>
+              <div className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary-dim py-3 text-sm text-primary">
+                <LiveDot />
+                <span className="font-medium">라이브 관전 중... ({currentTurn}/5턴)</span>
+              </div>
+              <button
+                onClick={skipToEnd}
+                className="rounded-xl border border-border px-4 py-3 text-sm text-text-muted transition hover:bg-surface-hover hover:text-text"
+              >
+                건너뛰기
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleNext}
+              className="w-full rounded-xl border border-primary/30 bg-primary-dim py-3 font-medium text-primary transition hover:bg-primary/20"
+            >
+              다음 턴 ({Math.min(Math.ceil(step / 4) + 1, 5)}/5)
+            </button>
+          )}
+        </div>
       )}
 
       {/* Scores */}
@@ -751,5 +822,33 @@ function ShareCard({
         {copied ? "클립보드에 복사됨!" : "배틀 결과 공유"}
       </button>
     </div>
+  );
+}
+
+// ─── Live Replay Components ───
+
+function ThinkingBubble({ name, side }: { name: string; side: "pro" | "con" }) {
+  const borderColor = side === "pro" ? "border-success/20" : "border-danger/20";
+  const bgColor = side === "pro" ? "bg-success/5" : "bg-danger/5";
+  const textColor = side === "pro" ? "text-success" : "text-danger";
+  return (
+    <div className={`rounded-xl border ${borderColor} ${bgColor} p-4 animate-pulse`}>
+      <p className={`mb-1 text-xs font-medium ${textColor}`}>{name}</p>
+      <div className="flex items-center gap-1">
+        <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-text-muted/40" style={{ animationDelay: "0ms" }} />
+        <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-text-muted/40" style={{ animationDelay: "150ms" }} />
+        <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-text-muted/40" style={{ animationDelay: "300ms" }} />
+        <span className="ml-2 text-xs text-text-muted">생각 중...</span>
+      </div>
+    </div>
+  );
+}
+
+function LiveDot() {
+  return (
+    <span className="relative flex h-2.5 w-2.5">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-danger opacity-75" />
+      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-danger" />
+    </span>
   );
 }
