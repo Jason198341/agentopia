@@ -3,6 +3,7 @@ import {
   type Agent,
   type AgentStats,
   type AgentPersonality,
+  type TurnStrategies,
   type Specialty,
   dbToAgent,
   statsToDB,
@@ -20,10 +21,11 @@ interface AgentState {
     stats: AgentStats,
     specialties: Specialty[],
     personality?: AgentPersonality,
+    turnStrategies?: TurnStrategies,
   ) => Promise<Agent | null>;
   updateAgent: (
     id: string,
-    updates: { name?: string; stats?: AgentStats; specialties?: Specialty[]; personality?: AgentPersonality },
+    updates: { name?: string; stats?: AgentStats; specialties?: Specialty[]; personality?: AgentPersonality; turnStrategies?: TurnStrategies },
   ) => Promise<boolean>;
   deleteAgent: (id: string) => Promise<boolean>;
 }
@@ -53,7 +55,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     });
   },
 
-  createAgent: async (name, stats, specialties, personality) => {
+  createAgent: async (name, stats, specialties, personality, turnStrategies) => {
     set({ error: null });
     const supabase = createClient();
     const {
@@ -64,10 +66,13 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       return null;
     }
 
-    // Store personality in traits JSONB under _personality key
+    // Store personality + turn strategies in traits JSONB
     const traits: Record<string, unknown> = {};
     if (personality && Object.keys(personality).length > 0) {
       traits._personality = personality;
+    }
+    if (turnStrategies && Object.values(turnStrategies).some((v) => v.trim())) {
+      traits._turn_strategies = turnStrategies;
     }
 
     const { data, error } = await supabase
@@ -101,11 +106,13 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     if (updates.stats) Object.assign(dbUpdates, statsToDB(updates.stats));
     if (updates.specialties) dbUpdates.specialties = updates.specialties;
 
-    // Merge personality into existing traits JSONB
-    if (updates.personality) {
+    // Merge personality + turn strategies into existing traits JSONB
+    if (updates.personality || updates.turnStrategies) {
       const existing = get().agents.find((a) => a.id === id);
-      const currentTraits = existing?.traits ?? {};
-      dbUpdates.traits = { ...currentTraits, _personality: updates.personality };
+      const currentTraits = { ...(existing?.traits ?? {}) };
+      if (updates.personality) currentTraits._personality = updates.personality;
+      if (updates.turnStrategies) currentTraits._turn_strategies = updates.turnStrategies;
+      dbUpdates.traits = currentTraits;
     }
 
     const { error } = await supabase
@@ -122,9 +129,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     set({
       agents: get().agents.map((a) => {
         if (a.id !== id) return a;
-        const updatedTraits = updates.personality
-          ? { ...a.traits, _personality: updates.personality }
-          : a.traits;
+        let updatedTraits = { ...a.traits };
+        if (updates.personality) updatedTraits = { ...updatedTraits, _personality: updates.personality };
+        if (updates.turnStrategies) updatedTraits = { ...updatedTraits, _turn_strategies: updates.turnStrategies };
         return {
           ...a,
           ...(updates.name ? { name: updates.name } : {}),

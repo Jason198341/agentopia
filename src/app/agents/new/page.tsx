@@ -4,6 +4,8 @@ import { useAgentStore } from "@/stores/agentStore";
 import {
   type AgentStats,
   type AgentPersonality,
+  type TurnStrategies,
+  type StrategyPresetId,
   type Specialty,
   type SpeakingStyle,
   type DebatePhilosophy,
@@ -17,6 +19,10 @@ import {
   SPEAKING_STYLES,
   DEBATE_PHILOSOPHIES,
   STRATEGY_PATTERNS,
+  STRATEGY_PRESETS,
+  STRATEGY_PRESET_IDS,
+  TURN_LABELS,
+  EMPTY_STRATEGIES,
 } from "@/types/agent";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -37,6 +43,8 @@ export default function NewAgentPage() {
   const [stats, setStats] = useState<AgentStats>({ ...DEFAULT_STATS });
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [personality, setPersonality] = useState<AgentPersonality>({});
+  const [turnStrategies, setTurnStrategies] = useState<TurnStrategies>({ ...EMPTY_STRATEGIES });
+  const [activePreset, setActivePreset] = useState<StrategyPresetId | "custom" | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -63,13 +71,23 @@ export default function NewAgentPage() {
     if (!name) setName(p.name);
   }
 
+  function applyStrategyPreset(presetId: StrategyPresetId) {
+    setTurnStrategies({ ...STRATEGY_PRESETS[presetId].strategies });
+    setActivePreset(presetId);
+  }
+
+  function setTurnStrategy(key: keyof TurnStrategies, value: string) {
+    setTurnStrategies((prev) => ({ ...prev, [key]: value }));
+    setActivePreset("custom");
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     setError(null);
     setSaving(true);
 
-    const agent = await createAgent(name.trim(), stats, specialties, personality);
+    const agent = await createAgent(name.trim(), stats, specialties, personality, turnStrategies);
     if (!agent) {
       setError(useAgentStore.getState().error ?? "Failed to create agent");
       setSaving(false);
@@ -304,6 +322,70 @@ export default function NewAgentPage() {
             <p className="mt-1 text-right text-xs text-text-muted">
               {personality.custom_instructions?.length ?? 0}/200
             </p>
+          </div>
+
+          {/* Turn-by-Turn Strategy */}
+          <div className="rounded-xl border border-accent/20 bg-accent-dim p-4">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-text">턴별 전략</p>
+              <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-bold text-accent">NEW</span>
+            </div>
+            <p className="mt-1 text-xs text-text-muted">
+              5턴 각각에 대한 구체적 전략을 작성하세요. 스탯보다 전략이 더 큰 영향을 줍니다.
+            </p>
+
+            {/* Strategy Presets */}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {STRATEGY_PRESET_IDS.map((id) => {
+                const preset = STRATEGY_PRESETS[id];
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => applyStrategyPreset(id)}
+                    className={`rounded-lg px-3 py-1.5 text-sm transition ${
+                      activePreset === id
+                        ? "bg-accent text-white"
+                        : "border border-border bg-surface text-text-muted hover:bg-surface-hover"
+                    }`}
+                  >
+                    {preset.emoji} {preset.ko}
+                  </button>
+                );
+              })}
+              {activePreset && (
+                <button
+                  type="button"
+                  onClick={() => { setTurnStrategies({ ...EMPTY_STRATEGIES }); setActivePreset(null); }}
+                  className="rounded-lg px-3 py-1.5 text-xs text-text-muted transition hover:bg-surface-hover"
+                >
+                  초기화
+                </button>
+              )}
+            </div>
+
+            {/* Per-turn text boxes */}
+            <div className="mt-3 space-y-3">
+              {(Object.keys(TURN_LABELS) as (keyof TurnStrategies)[]).map((key) => {
+                const label = TURN_LABELS[key];
+                return (
+                  <div key={key}>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-medium text-text">{label.ko}</p>
+                      <p className="text-[10px] text-text-muted">{label.guide}</p>
+                    </div>
+                    <textarea
+                      maxLength={200}
+                      rows={2}
+                      value={turnStrategies[key]}
+                      onChange={(e) => setTurnStrategy(key, e.target.value)}
+                      className="mt-1 block w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text placeholder-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                      placeholder={`이 턴의 전략을 작성하세요...`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* Stat Summary */}

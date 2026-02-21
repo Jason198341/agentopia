@@ -88,6 +88,95 @@ export interface AgentPersonality {
   custom_instructions?: string; // max 200 chars
 }
 
+// ─── Turn-by-Turn Strategy System ───
+
+export interface TurnStrategies {
+  turn_1: string; // opening
+  turn_2: string; // rebuttal
+  turn_3: string; // counter
+  turn_4: string; // free exchange
+  turn_5: string; // closing
+}
+
+export type StrategyPresetId = "aggressive" | "defensive" | "balanced";
+
+export const TURN_LABELS: Record<keyof TurnStrategies, { ko: string; type: string; guide: string }> = {
+  turn_1: { ko: "1턴 — 오프닝", type: "opening", guide: "첫인상을 결정하는 턴. 핵심 논제를 설정하고 프레임을 선점하세요." },
+  turn_2: { ko: "2턴 — 반박", type: "rebuttal", guide: "상대 오프닝의 약점을 공략하는 턴. 어떤 논거를 공격할지 선택하세요." },
+  turn_3: { ko: "3턴 — 재반박", type: "counter", guide: "상대 반박에 대응하면서 내 논점을 강화하는 턴." },
+  turn_4: { ko: "4턴 — 자유 토론", type: "free", guide: "새로운 증거, 사례, 질문을 던질 수 있는 자유 턴. 여기서 승부가 갈립니다." },
+  turn_5: { ko: "5턴 — 클로징", type: "closing", guide: "마무리 정리. 새 주장 대신 전체 논점을 엮어 마무리하세요." },
+};
+
+export const STRATEGY_PRESETS: Record<StrategyPresetId, { label: string; ko: string; emoji: string; description: string; strategies: TurnStrategies }> = {
+  aggressive: {
+    label: "Aggressive",
+    ko: "공격형",
+    emoji: "⚔️",
+    description: "상대를 압도하는 공세적 전략",
+    strategies: {
+      turn_1: "강렬한 통계나 사례로 시작해서 감정적 임팩트를 줘라. 도덕적/논리적 프레임을 먼저 선점해라.",
+      turn_2: "상대의 가장 약한 논거 하나만 골라서 집중 공격해라. 나머지는 무시해서 상대가 방어할 게 많아지게 만들어라.",
+      turn_3: "상대의 반박을 표면적으로만 인정하고, 그걸 역이용해서 내 논점을 더 강하게 만들어라.",
+      turn_4: "새로운 사례를 최소 2개 제시하고, 상대가 답하기 어려운 질문을 던져라. 이 턴에서 길게 가라.",
+      turn_5: "새 주장 금지. 지금까지의 논점을 하나의 내러티브로 엮어라. 마지막 문장은 청중의 감정에 호소해라.",
+    },
+  },
+  defensive: {
+    label: "Defensive",
+    ko: "방어형",
+    emoji: "🛡️",
+    description: "상대 논리를 무력화하는 수비적 전략",
+    strategies: {
+      turn_1: "논제의 전제 조건을 꼼꼼히 정의해라. 상대가 확대 해석할 수 없게 범위를 좁혀라.",
+      turn_2: "상대 주장의 전제를 하나씩 검증해라. '정말 그럴까?'를 반복하며 논리적 기반을 흔들어라.",
+      turn_3: "상대의 반박을 정면으로 받아들이되, 내 원래 논점이 여전히 유효한 이유를 차분하게 설명해라.",
+      turn_4: "상대가 제시한 증거의 출처, 맥락, 적용 가능성을 의심해라. 반례를 하나 제시해라.",
+      turn_5: "전체 토론을 요약하면서, 상대가 결국 내 핵심 논점에 반박하지 못했다는 점을 명확히 보여줘라.",
+    },
+  },
+  balanced: {
+    label: "Balanced",
+    ko: "균형형",
+    emoji: "⚖️",
+    description: "공격과 수비를 턴별로 전환하는 전략",
+    strategies: {
+      turn_1: "논제의 양쪽 입장을 인정한 뒤, 내 입장이 더 합리적인 이유를 명확히 제시해라.",
+      turn_2: "상대의 좋은 점은 인정하되, 핵심 약점 하나를 정확히 짚어라. 공정한 비판이 더 설득력 있다.",
+      turn_3: "상대의 반박에서 합리적인 부분을 수용하고, 내 논점을 보강된 형태로 재진술해라.",
+      turn_4: "양쪽의 논거를 비교 분석해라. 증거의 질과 양 면에서 내 입장이 우세한 이유를 보여줘라.",
+      turn_5: "토론 전체를 공정하게 정리하되, 결론적으로 내 입장이 더 많은 증거와 논리를 가졌음을 보여줘라.",
+    },
+  },
+};
+
+export const STRATEGY_PRESET_IDS = Object.keys(STRATEGY_PRESETS) as StrategyPresetId[];
+
+export const EMPTY_STRATEGIES: TurnStrategies = {
+  turn_1: "",
+  turn_2: "",
+  turn_3: "",
+  turn_4: "",
+  turn_5: "",
+};
+
+/** Extract turn strategies from agent traits (stored in traits._turn_strategies) */
+export function getTurnStrategies(agent: Agent): TurnStrategies | null {
+  const raw = (agent.traits as Record<string, unknown>)?._turn_strategies;
+  if (!raw || typeof raw !== "object") return null;
+  const s = raw as Record<string, string>;
+  // Only return if at least one turn has content
+  const hasContent = Object.values(s).some((v) => v && v.trim().length > 0);
+  if (!hasContent) return null;
+  return {
+    turn_1: s.turn_1 ?? "",
+    turn_2: s.turn_2 ?? "",
+    turn_3: s.turn_3 ?? "",
+    turn_4: s.turn_4 ?? "",
+    turn_5: s.turn_5 ?? "",
+  };
+}
+
 export interface Agent {
   id: string;
   owner_id: string;

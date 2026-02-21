@@ -1,6 +1,7 @@
-import type { Agent, AgentStats, Specialty } from "@/types/agent";
+import type { Agent, AgentStats, Specialty, TurnStrategies } from "@/types/agent";
 import {
   getPersonality,
+  getTurnStrategies,
   SPEAKING_STYLES,
   DEBATE_PHILOSOPHIES,
   STRATEGY_PATTERNS,
@@ -69,6 +70,15 @@ export const STAT_PROMPTS: Record<keyof AgentStats, Record<Tier, string>> = {
   },
 };
 
+// Map turnType → turn number for strategy lookup
+const TURN_SEQUENCE_MAP: Record<TurnType, number> = {
+  opening: 1,
+  rebuttal: 2,
+  counter: 3,
+  free: 4,
+  closing: 5,
+};
+
 const TURN_INSTRUCTIONS: Record<TurnType, string> = {
   opening:
     "This is your OPENING STATEMENT. Present your core thesis and key arguments clearly. Set the tone for the debate.",
@@ -117,6 +127,11 @@ export function buildAgentSystemPrompt(
     personalityLines.push(`Additional instructions from your creator: ${personality.custom_instructions}`);
   }
 
+  // Turn-specific strategy from the agent's creator
+  const turnStrategies = getTurnStrategies(agent);
+  const turnKey = `turn_${TURN_SEQUENCE_MAP[turnType]}` as keyof TurnStrategies;
+  const turnStrategy = turnStrategies?.[turnKey];
+
   const lines = [
     `You are "${agent.name}", a competitive debate agent arguing ${side} the following topic:`,
     `"${topic}"`,
@@ -136,6 +151,15 @@ export function buildAgentSystemPrompt(
       : []),
     "",
     TURN_INSTRUCTIONS[turnType],
+    // Inject turn-specific strategy (highest priority — this is the creator's game plan)
+    ...(turnStrategy && turnStrategy.trim()
+      ? [
+          "",
+          "IMPORTANT — Your creator's specific strategy for this turn:",
+          `"${turnStrategy.trim()}"`,
+          "Follow this strategy as your top priority for this turn.",
+        ]
+      : []),
   ];
 
   if (opponentLastMessage) {
