@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dbToAgent } from "@/types/agent";
 import { TURN_SEQUENCE } from "@/types/battle";
-import { pickRandomTopic } from "@/data/topics";
+import { pickTopicForElo } from "@/data/topics";
 import { runFullBattle } from "@/lib/battle-engine";
 import { checkNewBadges } from "@/types/badge";
 import { NextResponse } from "next/server";
@@ -94,8 +94,9 @@ export async function POST(request: Request) {
   const agentA = playerIsPro ? playerAgent : opponentAgent; // PRO
   const agentB = playerIsPro ? opponentAgent : playerAgent; // CON
 
-  // 6. Pick topic
-  const { topic, category } = pickRandomTopic();
+  // 6. Pick topic (ELO-based difficulty: <1000 casual, 1000-1500 standard, 1500+ advanced)
+  const avgElo = Math.round((playerAgent.elo + opponentAgent.elo) / 2);
+  const { topic, category } = pickTopicForElo(avgElo);
 
   // 7. Create battle record (pending)
   const { data: battle, error: battleErr } = await admin

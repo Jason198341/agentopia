@@ -109,12 +109,14 @@ async function judgeBattle(
     consistency: clamp(s.consistency ?? 0, 0, 20),
     persuasion: clamp(s.persuasion ?? 0, 0, 20),
     expression: clamp(s.expression ?? 0, 0, 20),
+    factual: clamp(s.factual ?? 0, 0, 20),
     total:
       clamp(s.logic ?? 0, 0, 20) +
       clamp(s.rebuttal ?? 0, 0, 20) +
       clamp(s.consistency ?? 0, 0, 20) +
       clamp(s.persuasion ?? 0, 0, 20) +
-      clamp(s.expression ?? 0, 0, 20),
+      clamp(s.expression ?? 0, 0, 20) +
+      clamp(s.factual ?? 0, 0, 20),
   });
 
   return {

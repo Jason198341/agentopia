@@ -10,6 +10,7 @@ import {
   type Specialty,
 } from "@/types/agent";
 import { BADGE_MAP } from "@/types/badge";
+import { STAT_PROMPTS, tier as statTier } from "@/data/prompts/battle";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -96,6 +97,37 @@ export function AgentDetail({
                 value={agent.stats[key]}
               />
             ))}
+          </div>
+        </section>
+
+        {/* Personality Profile — what the stats actually do */}
+        <section className="mt-6">
+          <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
+            Debate Personality
+          </h2>
+          <div className="mt-3 space-y-1.5">
+            {STAT_KEYS.map((key) => {
+              const t = statTier(agent.stats[key]);
+              const prompt = STAT_PROMPTS[key][t];
+              return (
+                <div key={key} className="flex items-start gap-2 rounded-lg bg-surface/50 px-3 py-2">
+                  <span className="mt-0.5 text-sm">{STAT_LABELS[key].emoji}</span>
+                  <div>
+                    <span className="text-xs font-semibold text-primary">
+                      {STAT_LABELS[key].en} {agent.stats[key]}
+                    </span>
+                    <span className={`ml-1.5 rounded px-1 text-[10px] font-bold uppercase ${
+                      t === "low" ? "bg-danger/15 text-danger"
+                        : t === "high" ? "bg-success/15 text-success"
+                        : "bg-warning/15 text-warning"
+                    }`}>
+                      {t}
+                    </span>
+                    <p className="mt-0.5 text-xs leading-relaxed text-text-muted">{prompt}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
 

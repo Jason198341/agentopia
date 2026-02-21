@@ -10,6 +10,7 @@ import {
   STAT_KEYS,
   STAT_LABELS,
 } from "@/types/agent";
+import { STAT_PROMPTS, tier, type Tier } from "@/data/prompts/battle";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -19,6 +20,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
   const [specialties, setSpecialties] = useState<Specialty[]>([...agent.specialties]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedStat, setExpandedStat] = useState<keyof AgentStats | null>(null);
   const router = useRouter();
   const updateAgent = useAgentStore((s) => s.updateAgent);
 
@@ -103,33 +105,98 @@ export function AgentEditor({ agent }: { agent: Agent }) {
                 Total: <span className="font-mono text-text">{totalPoints}</span>/80
               </p>
             </div>
-            <div className="mt-3 space-y-3">
+            <div className="mt-3 space-y-1">
               {STAT_KEYS.map((key) => {
                 const label = STAT_LABELS[key];
                 const value = stats[key];
                 const original = agent.stats[key];
                 const diff = value - original;
+                const currentTier = tier(value);
+                const isExpanded = expandedStat === key;
                 return (
-                  <div key={key} className="flex items-center gap-3">
-                    <span className="w-6 text-center text-lg">{label.emoji}</span>
-                    <span className="w-24 text-sm text-text-muted">{label.en}</span>
-                    <input
-                      type="range"
-                      min={1}
-                      max={10}
-                      value={value}
-                      onChange={(e) => setStat(key, Number(e.target.value))}
-                      className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-border accent-primary"
-                    />
-                    <span className="w-8 text-right font-mono text-sm font-bold text-primary">
-                      {value}
-                    </span>
-                    {diff !== 0 && (
-                      <span
-                        className={`w-10 text-right font-mono text-xs font-bold ${diff > 0 ? "text-success" : "text-danger"}`}
-                      >
-                        {diff > 0 ? `+${diff}` : diff}
+                  <div key={key}>
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 text-center text-lg">{label.emoji}</span>
+                      <span className="w-24 text-sm text-text-muted">{label.en}</span>
+                      <div className="relative flex-1">
+                        <input
+                          type="range"
+                          min={1}
+                          max={10}
+                          value={value}
+                          onChange={(e) => setStat(key, Number(e.target.value))}
+                          className="h-2 w-full cursor-pointer appearance-none rounded-full bg-border accent-primary"
+                        />
+                        {/* Tier threshold markers */}
+                        <div className="pointer-events-none absolute -top-1 left-0 flex w-full justify-between px-[3px]">
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                            <span
+                              key={n}
+                              className={`h-1 w-0.5 ${
+                                n === 4 || n === 7
+                                  ? "bg-warning"
+                                  : "bg-transparent"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <span className="w-8 text-right font-mono text-sm font-bold text-primary">
+                        {value}
                       </span>
+                      <span
+                        className={`w-10 rounded px-1 text-center text-[10px] font-bold uppercase ${
+                          currentTier === "low"
+                            ? "bg-danger/15 text-danger"
+                            : currentTier === "high"
+                              ? "bg-success/15 text-success"
+                              : "bg-warning/15 text-warning"
+                        }`}
+                      >
+                        {currentTier}
+                      </span>
+                      {diff !== 0 && (
+                        <span
+                          className={`w-8 text-right font-mono text-xs font-bold ${diff > 0 ? "text-success" : "text-danger"}`}
+                        >
+                          {diff > 0 ? `+${diff}` : diff}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setExpandedStat(isExpanded ? null : key)}
+                        className="text-xs text-text-muted hover:text-text"
+                        title="Show what this stat does"
+                      >
+                        {isExpanded ? "▲" : "?"}
+                      </button>
+                    </div>
+                    {/* Expanded: show all tier effects */}
+                    {isExpanded && (
+                      <div className="mb-2 ml-9 mt-1 space-y-1 rounded-lg border border-border bg-surface/50 p-3">
+                        {(["low", "mid", "high"] as Tier[]).map((t) => {
+                          const isCurrent = t === currentTier;
+                          const range = t === "low" ? "1-3" : t === "mid" ? "4-6" : "7-10";
+                          return (
+                            <div
+                              key={t}
+                              className={`rounded-md px-2 py-1.5 text-xs ${
+                                isCurrent
+                                  ? "border border-primary/30 bg-primary/10 text-text"
+                                  : "text-text-muted"
+                              }`}
+                            >
+                              <span className="font-mono font-bold">[{range}]</span>{" "}
+                              <span className={`font-semibold uppercase ${
+                                isCurrent ? "text-primary" : ""
+                              }`}>
+                                {t}
+                              </span>
+                              : {STAT_PROMPTS[key][t]}
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 );

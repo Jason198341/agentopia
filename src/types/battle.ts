@@ -17,7 +17,8 @@ export interface BattleScore {
   consistency: number;
   persuasion: number;
   expression: number;
-  total: number; // 0-100
+  factual: number; // 0-20 — factual accuracy & evidence quality
+  total: number; // 0-120 (6 criteria × 20)
 }
 
 export interface Battle {

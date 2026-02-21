@@ -4,6 +4,7 @@ import type { Agent, AgentStats } from "@/types/agent";
 import { STAT_LABELS } from "@/types/agent";
 import type { Battle, BattleTurn, BattleScore } from "@/types/battle";
 import { TURN_SEQUENCE } from "@/types/battle";
+import { DEBATE_TOPICS, type TopicDifficulty } from "@/data/topics";
 import { useState } from "react";
 
 interface Props {
@@ -48,6 +49,10 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
   const userOwnsB = agentB.owner_id === userId;
   const userAgent = userOwnsA ? agentA : userOwnsB ? agentB : null;
 
+  // Infer difficulty from topic lookup
+  const topicEntry = DEBATE_TOPICS.find((t) => t.topic === battle.topic);
+  const difficulty: TopicDifficulty = topicEntry?.difficulty ?? "standard";
+
   return (
     <div>
       {/* Header */}
@@ -56,9 +61,22 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
       </a>
 
       <div className="mt-4 rounded-xl border border-border bg-surface p-4">
-        <p className="text-center text-xs uppercase tracking-wider text-text-muted">
-          {battle.topic_category}
-        </p>
+        <div className="flex items-center justify-center gap-2">
+          <p className="text-xs uppercase tracking-wider text-text-muted">
+            {battle.topic_category}
+          </p>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+              difficulty === "casual"
+                ? "bg-success/15 text-success"
+                : difficulty === "advanced"
+                  ? "bg-danger/15 text-danger"
+                  : "bg-warning/15 text-warning"
+            }`}
+          >
+            {difficulty}
+          </span>
+        </div>
         <h1 className="mt-1 text-center text-lg font-bold text-text">
           &ldquo;{battle.topic}&rdquo;
         </h1>
@@ -170,6 +188,14 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
             )}
           </div>
 
+          {/* Share Card */}
+          <ShareCard
+            battle={battle}
+            agentA={agentA}
+            agentB={agentB}
+            difficulty={difficulty}
+          />
+
           {/* Actions */}
           <div className="mt-6 flex gap-3">
             {userAgent && (
@@ -229,6 +255,10 @@ const CRITERIA_STAT_MAP: Record<string, { stats: (keyof AgentStats)[]; tip: stri
     stats: ["brevity", "humor", "creativity"],
     tip: "Clearer expression uses Brevity (concise delivery), Humor (engaging tone), and Creativity (vivid language).",
   },
+  factual: {
+    stats: ["knowledge", "logic"],
+    tip: "Factual accuracy depends on Knowledge (domain expertise and precision) and Logic (evidence-based reasoning).",
+  },
 };
 
 function BattleAnalysis({
@@ -257,9 +287,9 @@ function BattleAnalysis({
   // Find weakest criteria (biggest gap where user lost)
   const criteriaGaps = CRITERIA.map(({ key }) => ({
     key,
-    myVal: myScore[key],
-    theirVal: theirScore[key],
-    gap: theirScore[key] - myScore[key],
+    myVal: myScore[key] ?? 0,
+    theirVal: theirScore[key] ?? 0,
+    gap: (theirScore[key] ?? 0) - (myScore[key] ?? 0),
   }));
   const sortedWeaknesses = [...criteriaGaps].sort((a, b) => b.gap - a.gap);
   const worstCriteria = sortedWeaknesses[0];
@@ -462,7 +492,7 @@ function RadarChart({ myScore, theirScore }: { myScore: BattleScore; theirScore:
     return labels
       .map(({ key }, i) => {
         const angle = (360 / labels.length) * i;
-        const r = (score[key] / 20) * maxR;
+        const r = ((score[key] ?? 0) / 20) * maxR;
         return polarToXY(angle, r);
       })
       .map((p) => `${p.x},${p.y}`)
@@ -534,6 +564,7 @@ const CRITERIA = [
   { key: "consistency" as const, label: "Consistency" },
   { key: "persuasion" as const, label: "Persuasion" },
   { key: "expression" as const, label: "Expression" },
+  { key: "factual" as const, label: "Factual Accuracy" },
 ];
 
 function ScoreComparison({
@@ -556,8 +587,9 @@ function ScoreComparison({
       </div>
 
       {CRITERIA.map(({ key, label }) => {
-        const a = scoreA[key];
-        const b = scoreB[key];
+        const a = scoreA[key] ?? 0;
+        const b = scoreB[key] ?? 0;
+        if (a === 0 && b === 0) return null; // skip criteria missing from old battles
         return (
           <div key={key}>
             <p className="mb-1 text-center text-xs text-text-muted">{label}</p>
@@ -589,6 +621,135 @@ function ScoreComparison({
         <span className="text-sm font-medium text-text-muted">TOTAL</span>
         <span className="text-xl font-bold text-danger">{scoreB.total}</span>
       </div>
+    </div>
+  );
+}
+
+// ─── Share Card ───
+
+function ShareCard({
+  battle,
+  agentA,
+  agentB,
+  difficulty,
+}: {
+  battle: Battle;
+  agentA: Agent;
+  agentB: Agent;
+  difficulty: TopicDifficulty;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const winnerName = battle.winner_id
+    ? battle.winner_id === agentA.id ? agentA.name : agentB.name
+    : null;
+  const scoreA = battle.score_a?.total ?? 0;
+  const scoreB = battle.score_b?.total ?? 0;
+
+  const shareText = [
+    `${agentA.name} vs ${agentB.name}`,
+    `Topic: "${battle.topic}" [${difficulty}]`,
+    `Score: ${scoreA}–${scoreB}`,
+    winnerName ? `Winner: ${winnerName}` : "Draw!",
+    `ELO: ${agentA.name} ${battle.elo_change_a > 0 ? "+" : ""}${battle.elo_change_a} | ${agentB.name} ${battle.elo_change_b > 0 ? "+" : ""}${battle.elo_change_b}`,
+    "",
+    `Watch the replay: ${typeof window !== "undefined" ? window.location.href : ""}`,
+    "",
+    "Agentopia — AI Debate Arena",
+    "agentopia.online",
+  ].join("\n");
+
+  async function handleShare() {
+    // Try Web Share API first (mobile)
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${agentA.name} vs ${agentB.name} — Agentopia`,
+          text: shareText,
+          url: window.location.href,
+        });
+        return;
+      } catch {
+        // User cancelled or not supported — fall through to clipboard
+      }
+    }
+
+    // Clipboard fallback
+    try {
+      await navigator.clipboard.writeText(shareText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Final fallback
+      const textarea = document.createElement("textarea");
+      textarea.value = shareText;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  return (
+    <div className="mt-6">
+      {/* Visual card preview */}
+      <div className="overflow-hidden rounded-xl border border-border bg-gradient-to-br from-[#0a0e1a] to-[#1a1040] p-5">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-widest text-primary/60">
+            Agentopia
+          </p>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+              difficulty === "casual"
+                ? "bg-success/15 text-success"
+                : difficulty === "advanced"
+                  ? "bg-danger/15 text-danger"
+                  : "bg-warning/15 text-warning"
+            }`}
+          >
+            {difficulty}
+          </span>
+        </div>
+        <p className="mt-2 text-center text-xs text-text-muted">
+          {battle.topic_category}
+        </p>
+        <p className="mt-1 text-center text-sm font-medium text-text">
+          &ldquo;{battle.topic}&rdquo;
+        </p>
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-center">
+            <p className="text-xs text-success">PRO</p>
+            <p className="text-sm font-bold text-text">{agentA.name}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold font-mono text-text">
+              {scoreA}<span className="text-text-muted">–</span>{scoreB}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-danger">CON</p>
+            <p className="text-sm font-bold text-text">{agentB.name}</p>
+          </div>
+        </div>
+        {winnerName && (
+          <p className="mt-3 text-center text-sm font-bold text-warning">
+            {winnerName} Wins!
+          </p>
+        )}
+        <p className="mt-2 text-center text-[10px] text-text-muted/50">
+          agentopia.online
+        </p>
+      </div>
+
+      {/* Share button */}
+      <button
+        onClick={handleShare}
+        className="mt-3 w-full rounded-xl border border-accent/30 bg-accent/5 py-2.5 text-sm font-medium text-accent transition hover:bg-accent/10"
+      >
+        {copied ? "Copied to clipboard!" : "Share Battle Result"}
+      </button>
     </div>
   );
 }

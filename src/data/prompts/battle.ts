@@ -3,15 +3,15 @@ import type { TurnType } from "@/types/battle";
 
 // ─── Stat-to-Prompt Mapping (P014 — 3 tiers per stat) ───
 
-type Tier = "low" | "mid" | "high";
+export type Tier = "low" | "mid" | "high";
 
-function tier(value: number): Tier {
+export function tier(value: number): Tier {
   if (value <= 3) return "low";
   if (value <= 6) return "mid";
   return "high";
 }
 
-const STAT_PROMPTS: Record<keyof AgentStats, Record<Tier, string>> = {
+export const STAT_PROMPTS: Record<keyof AgentStats, Record<Tier, string>> = {
   logic: {
     low: "Rely on intuition, personal stories, and anecdotes rather than formal logic.",
     mid: "Balance logical reasoning with relatable examples and analogies.",
@@ -121,6 +121,7 @@ const JUDGE_CRITERIA = [
   { key: "consistency", name: "Consistency", desc: "Internal coherence, no self-contradictions across turns" },
   { key: "persuasion", name: "Persuasiveness", desc: "Overall ability to convince a neutral audience" },
   { key: "expression", name: "Expressive Clarity", desc: "Quality of writing, rhetorical skill, and engagement" },
+  { key: "factual", name: "Factual Accuracy", desc: "Correctness of cited facts, data, and references. Penalize fabricated statistics, misattributed quotes, or demonstrably false claims" },
 ] as const;
 
 export function buildJudgeSystemPrompt(
@@ -138,13 +139,15 @@ export function buildJudgeSystemPrompt(
 ${agentAName} argued IN FAVOR (PRO).
 ${agentBName} argued AGAINST (CON).
 
-Score each debater on these 5 criteria (0-20 points each, 100 max total):
+Score each debater on these 6 criteria (0-20 points each, 120 max total):
 ${criteriaBlock}
+
+For Factual Accuracy specifically: If a debater cites a statistic, study, or historical event, judge whether it sounds plausible and correctly used. Fabricated data or misattributed quotes should receive low scores. Debaters who qualify claims with "studies suggest" rather than making up exact numbers should not be penalized.
 
 IMPORTANT: Respond ONLY with valid JSON in this exact format, no other text:
 {
-  "agent_a": { "logic": <number>, "rebuttal": <number>, "consistency": <number>, "persuasion": <number>, "expression": <number>, "total": <number> },
-  "agent_b": { "logic": <number>, "rebuttal": <number>, "consistency": <number>, "persuasion": <number>, "expression": <number>, "total": <number> },
+  "agent_a": { "logic": <number>, "rebuttal": <number>, "consistency": <number>, "persuasion": <number>, "expression": <number>, "factual": <number>, "total": <number> },
+  "agent_b": { "logic": <number>, "rebuttal": <number>, "consistency": <number>, "persuasion": <number>, "expression": <number>, "factual": <number>, "total": <number> },
   "reasoning": "<2-3 sentence explanation of the scoring>"
 }`;
 }
