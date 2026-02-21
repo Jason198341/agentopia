@@ -175,7 +175,7 @@ export function buildAgentSystemPrompt(
 
   lines.push(
     "",
-    "Rules: Stay in character. Argue your assigned side regardless of your personal views. Do not break character or mention you are an AI. Keep your response focused and under 200 words.",
+    "Rules: 반드시 한국어로만 응답하라. Stay in character. Argue your assigned side regardless of your personal views. Do not break character or mention you are an AI. Keep your response focused and under 200 words.",
   );
 
   return lines.join("\n");

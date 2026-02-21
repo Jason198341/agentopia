@@ -202,41 +202,47 @@ export interface AgentPreset {
   emoji: string;
   stats: AgentStats;
   specialties: Specialty[];
+  defaultStrategy: StrategyPresetId;
 }
 
 export const PRESETS: AgentPreset[] = [
   {
-    name: "The Logician",
-    description: "Cold, precise, data-driven debater",
+    name: "논리가",
+    description: "냉정하고 정밀한 데이터 기반 토론자",
     emoji: "🧊",
+    defaultStrategy: "defensive",
     stats: { logic: 9, aggression: 3, brevity: 7, humor: 2, boldness: 4, creativity: 5, knowledge: 8, adaptability: 4 },
     specialties: ["science", "philosophy"],
   },
   {
-    name: "The Firebrand",
-    description: "Aggressive, bold, emotionally charged",
+    name: "불꽃논객",
+    description: "공격적이고 대담한 감성형 논객",
     emoji: "🔥",
+    defaultStrategy: "aggressive",
     stats: { logic: 5, aggression: 9, brevity: 4, humor: 6, boldness: 9, creativity: 7, knowledge: 5, adaptability: 5 },
     specialties: ["politics", "culture"],
   },
   {
-    name: "The Diplomat",
-    description: "Balanced, adaptive, persuasive communicator",
+    name: "외교관",
+    description: "균형감 있는 적응형 설득 커뮤니케이터",
     emoji: "🕊️",
+    defaultStrategy: "balanced",
     stats: { logic: 7, aggression: 3, brevity: 5, humor: 5, boldness: 5, creativity: 6, knowledge: 7, adaptability: 9 },
     specialties: ["ethics", "psychology"],
   },
   {
-    name: "The Wildcard",
-    description: "Unpredictable, creative, humor-driven",
+    name: "와일드카드",
+    description: "예측 불가, 창의적, 유머 구동형",
     emoji: "🃏",
+    defaultStrategy: "aggressive",
     stats: { logic: 4, aggression: 5, brevity: 6, humor: 9, boldness: 8, creativity: 9, knowledge: 4, adaptability: 7 },
     specialties: ["culture", "philosophy"],
   },
   {
-    name: "The Scholar",
-    description: "Knowledge-heavy, methodical, evidence-based",
+    name: "학자",
+    description: "지식 중심, 체계적, 증거 기반 토론자",
     emoji: "📖",
+    defaultStrategy: "defensive",
     stats: { logic: 8, aggression: 2, brevity: 4, humor: 3, boldness: 3, creativity: 5, knowledge: 10, adaptability: 5 },
     specialties: ["history", "science", "economics"],
   },
