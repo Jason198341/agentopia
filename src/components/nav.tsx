@@ -1,7 +1,8 @@
 "use client";
 
+import { createClient } from "@/lib/supabase/client";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "🏠" },
@@ -12,6 +13,26 @@ const NAV_ITEMS = [
 export function Nav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.role === "admin") setIsAdmin(true);
+        });
+    });
+  }, []);
+
+  const navItems = isAdmin
+    ? [...NAV_ITEMS, { href: "/admin", label: "Admin", icon: "⚙️" }]
+    : NAV_ITEMS;
 
   // Don't show nav on auth pages or landing
   if (pathname.startsWith("/auth") || pathname === "/") return null;
@@ -26,7 +47,7 @@ export function Nav() {
 
         {/* Desktop Nav */}
         <div className="hidden items-center gap-1 sm:flex">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <a
@@ -67,7 +88,7 @@ export function Nav() {
       {/* Mobile Menu */}
       {open && (
         <div className="border-t border-border bg-bg px-4 py-2 sm:hidden">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <a
