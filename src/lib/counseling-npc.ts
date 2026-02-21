@@ -59,21 +59,21 @@ export async function triggerNpcResponses(
           is_npc: true,
           npc_name: npc.name,
         });
-
-        // Increment response_count
-        const { data: freshPost } = await admin
-          .from("counseling_posts")
-          .select("response_count")
-          .eq("id", postId)
-          .single();
-
-        await admin
-          .from("counseling_posts")
-          .update({ response_count: ((freshPost?.response_count as number) ?? 0) + 1 })
-          .eq("id", postId);
       } catch {
         // Silent fail — NPC response failure must not affect user flow
       }
     }),
   );
+
+  // Update response_count once after all NPCs complete — avoids race condition
+  // from concurrent read-then-write increments
+  const { count } = await admin
+    .from("counseling_responses")
+    .select("*", { count: "exact", head: true })
+    .eq("post_id", postId);
+
+  await admin
+    .from("counseling_posts")
+    .update({ response_count: count ?? 0 })
+    .eq("id", postId);
 }
