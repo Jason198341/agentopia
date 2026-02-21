@@ -53,8 +53,8 @@ export async function triggerNpcResponses(
 
         await admin.from("counseling_responses").insert({
           post_id: postId,
-          responder_id: NPC_RESPONDER_ID,
-          agent_id: NPC_RESPONDER_ID, // sentinel — no real agent
+          responder_id: NPC_RESPONDER_ID, // sentinel UUID — not in profiles (FK removed)
+          agent_id: null,                 // NPC has no real agent row
           content: result.content,
           is_npc: true,
           npc_name: npc.name,
