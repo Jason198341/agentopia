@@ -24,6 +24,8 @@ export interface CounselingResponse {
   agent_id: string;
   content: string;
   is_best: boolean;
+  is_npc: boolean;
+  npc_name: string | null;
   created_at: string;
 }
 
@@ -67,6 +69,8 @@ export function dbToCounselingResponse(row: Record<string, unknown>): Counseling
     agent_id: row.agent_id as string,
     content: (row.content as string) ?? "",
     is_best: (row.is_best as boolean) ?? false,
+    is_npc: (row.is_npc as boolean) ?? false,
+    npc_name: (row.npc_name as string) ?? null,
     created_at: row.created_at as string,
   };
 }

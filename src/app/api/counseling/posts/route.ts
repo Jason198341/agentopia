@@ -4,6 +4,7 @@ import { dbToAgent } from "@/types/agent";
 import { detectCrisis } from "@/types/counseling";
 import { buildOrganizeSystemPrompt } from "@/data/prompts/counseling";
 import { fireworksCompletion } from "@/lib/ai";
+import { triggerNpcResponses } from "@/lib/counseling-npc";
 import { NextResponse } from "next/server";
 
 // GET: List counseling posts (paginated, filterable)
@@ -176,6 +177,9 @@ export async function POST(request: Request) {
     .from("profiles")
     .update({ free_counseling_posts_remaining: Math.max(0, remaining - 1) })
     .eq("id", user.id);
+
+  // 10. Fire NPC auto-responses (non-blocking — don't await)
+  void triggerNpcResponses(post.id, organized, emotionTags);
 
   return NextResponse.json({
     post_id: post.id,
