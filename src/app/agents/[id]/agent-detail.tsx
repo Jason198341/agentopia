@@ -3,11 +3,7 @@
 import { useAgentStore } from "@/stores/agentStore";
 import {
   type Agent,
-  type AgentStats,
   type TurnStrategies,
-  type StrategyPresetId,
-  STAT_KEYS,
-  STAT_LABELS,
   SPECIALTY_LABELS,
   type Specialty,
   getPersonality,
@@ -15,13 +11,9 @@ import {
   SPEAKING_STYLES,
   DEBATE_PHILOSOPHIES,
   STRATEGY_PATTERNS,
-  STRATEGY_PRESETS,
-  STRATEGY_PRESET_IDS,
   TURN_LABELS,
-  EMPTY_STRATEGIES,
 } from "@/types/agent";
 import { BADGE_MAP } from "@/types/badge";
-import { STAT_PROMPTS, tier as statTier } from "@/data/prompts/battle";
 import { getTierForElo, winRate as calcWinRate, calcStreak } from "@/lib/tiers";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -133,53 +125,33 @@ export function AgentDetail({
           </section>
         )}
 
-        {/* Stats Radar */}
-        <section className="mt-6">
-          <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
-            스탯
-          </h2>
-          <div className="mt-3 space-y-2">
-            {STAT_KEYS.map((key) => (
-              <StatBar
-                key={key}
-                label={`${STAT_LABELS[key].emoji} ${STAT_LABELS[key].ko}`}
-                value={agent.stats[key]}
-              />
-            ))}
-          </div>
-        </section>
-
-        {/* Personality Profile — what the stats actually do */}
-        <section className="mt-6">
-          <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
-            토론 성격
-          </h2>
-          <div className="mt-3 space-y-1.5">
-            {STAT_KEYS.map((key) => {
-              const t = statTier(agent.stats[key]);
-              const prompt = STAT_PROMPTS[key][t];
-              return (
-                <div key={key} className="flex items-start gap-2 rounded-lg bg-surface/50 px-3 py-2">
-                  <span className="mt-0.5 text-sm">{STAT_LABELS[key].emoji}</span>
-                  <div>
-                    <span className="text-xs font-semibold text-primary">
-                      {STAT_LABELS[key].ko} {agent.stats[key]}
-                    </span>
-                    <span className={`ml-1.5 rounded px-1 text-[10px] font-bold uppercase ${
-                      t === "low" ? "bg-danger/15 text-danger"
-                        : t === "extreme" ? "bg-accent/15 text-accent"
-                        : t === "high" ? "bg-success/15 text-success"
-                        : "bg-warning/15 text-warning"
-                    }`}>
-                      {t}
-                    </span>
-                    <p className="mt-0.5 text-xs leading-relaxed text-text-muted">{prompt}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+        {/* Turn-by-Turn Strategy (primary) */}
+        {(() => {
+          const strategies = getTurnStrategies(agent);
+          return strategies ? (
+            <section className="mt-6">
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
+                  📝 턴별 전략
+                </h2>
+                <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-bold text-accent">AI 핵심 행동 지침</span>
+              </div>
+              <div className="mt-3 space-y-2">
+                {(Object.keys(TURN_LABELS) as (keyof TurnStrategies)[]).map((key) => {
+                  const label = TURN_LABELS[key];
+                  const text = strategies[key];
+                  if (!text || !text.trim()) return null;
+                  return (
+                    <div key={key} className="rounded-lg border border-accent/20 bg-accent/5 px-3 py-2">
+                      <span className="text-xs font-semibold text-accent">{label.ko}</span>
+                      <p className="mt-0.5 text-xs leading-relaxed text-text-muted">{text}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null;
+        })()}
 
         {/* Debate Approach (personality presets) */}
         {(() => {
@@ -218,34 +190,6 @@ export function AgentDetail({
                     <p className="mt-0.5 text-xs leading-relaxed text-text-muted">{p.custom_instructions}</p>
                   </div>
                 )}
-              </div>
-            </section>
-          ) : null;
-        })()}
-
-        {/* Turn-by-Turn Strategy */}
-        {(() => {
-          const strategies = getTurnStrategies(agent);
-          return strategies ? (
-            <section className="mt-6">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
-                  턴별 전략
-                </h2>
-                <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-bold text-accent">STRATEGY</span>
-              </div>
-              <div className="mt-3 space-y-2">
-                {(Object.keys(TURN_LABELS) as (keyof TurnStrategies)[]).map((key) => {
-                  const label = TURN_LABELS[key];
-                  const text = strategies[key];
-                  if (!text || !text.trim()) return null;
-                  return (
-                    <div key={key} className="rounded-lg border border-accent/10 bg-accent-dim px-3 py-2">
-                      <span className="text-xs font-semibold text-accent">{label.ko}</span>
-                      <p className="mt-0.5 text-xs leading-relaxed text-text-muted">{text}</p>
-                    </div>
-                  );
-                })}
               </div>
             </section>
           ) : null;
@@ -427,24 +371,6 @@ function StatCard({
     <div className="rounded-xl border border-border bg-surface p-3 text-center">
       <p className={`text-xl font-bold ${color}`}>{value}</p>
       <p className="text-xs text-text-muted">{label}</p>
-    </div>
-  );
-}
-
-function StatBar({ label, value }: { label: string; value: number }) {
-  const pct = (value / 10) * 100;
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-32 text-sm text-text-muted">{label}</span>
-      <div className="relative h-2 flex-1 rounded-full bg-border">
-        <div
-          className="absolute inset-y-0 left-0 rounded-full bg-primary"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="w-6 text-right font-mono text-sm font-bold text-primary">
-        {value}
-      </span>
     </div>
   );
 }
