@@ -183,5 +183,6 @@
 - [x] Client: page.tsx routes pending/in_progress → BattleLive, completed → BattleReplay
 - [x] Client: launcher loading message updated (30s → instant)
 - [x] Battle type: added current_turn, error_message fields
+- [x] Worker: esbuild bundler (build.mjs, @/ alias resolution)
+- [x] Supabase migration applied to production (SQL Editor)
 - [ ] Railway deployment (Docker worker)
-- [ ] Supabase migration applied to production

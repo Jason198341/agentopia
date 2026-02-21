@@ -46,3 +46,7 @@ next-env.d.ts
 
 # supabase
 supabase/.temp/
+
+# worker
+worker/node_modules/
+worker/dist/
