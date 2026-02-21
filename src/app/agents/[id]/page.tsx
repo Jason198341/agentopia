@@ -35,7 +35,15 @@ export default async function AgentPage({
     .or(`agent_a_id.eq.${id},agent_b_id.eq.${id}`)
     .eq("status", "completed")
     .order("completed_at", { ascending: false })
-    .limit(10);
+    .limit(20);
+
+  // Fetch ELO history for the graph (oldest first for charting)
+  const { data: eloRows } = await supabase
+    .from("elo_history")
+    .select("elo_before, elo_after, change, created_at")
+    .eq("agent_id", id)
+    .order("created_at", { ascending: true })
+    .limit(50);
 
   // Fetch opponent names for display
   const battles = battleRows ?? [];
@@ -61,8 +69,8 @@ export default async function AgentPage({
     const opponentId = isAgentA ? b.agent_b_id : b.agent_a_id;
     const won = b.winner_id === id;
     const draw = b.winner_id === null;
-    const myScore = isAgentA ? b.score_a?.total : b.score_b?.total;
-    const theirScore = isAgentA ? b.score_b?.total : b.score_a?.total;
+    const myScore = isAgentA ? b.score_a : b.score_b;
+    const theirScore = isAgentA ? b.score_b : b.score_a;
     const eloChange = isAgentA ? b.elo_change_a : b.elo_change_b;
 
     return {
@@ -71,12 +79,37 @@ export default async function AgentPage({
       topic: b.topic,
       category: b.topic_category,
       result: draw ? ("draw" as const) : won ? ("win" as const) : ("loss" as const),
-      myScore: myScore ?? 0,
-      theirScore: theirScore ?? 0,
+      myScore: myScore?.total ?? 0,
+      theirScore: theirScore?.total ?? 0,
       eloChange: eloChange ?? 0,
       date: b.completed_at,
+      // Per-criteria scores for trends
+      criteria: myScore
+        ? {
+            logic: myScore.logic ?? 0,
+            rebuttal: myScore.rebuttal ?? 0,
+            consistency: myScore.consistency ?? 0,
+            persuasion: myScore.persuasion ?? 0,
+            expression: myScore.expression ?? 0,
+            factual: myScore.factual ?? 0,
+          }
+        : null,
     };
   });
 
-  return <AgentDetail agent={agent} isOwner={isOwner} battleHistory={battleHistory} />;
+  // Build ELO history points for the chart
+  const eloHistory = (eloRows ?? []).map((r) => ({
+    elo: r.elo_after as number,
+    change: r.change as number,
+    date: r.created_at as string,
+  }));
+
+  return (
+    <AgentDetail
+      agent={agent}
+      isOwner={isOwner}
+      battleHistory={battleHistory}
+      eloHistory={eloHistory}
+    />
+  );
 }

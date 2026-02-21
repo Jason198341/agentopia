@@ -27,6 +27,15 @@ function eloTier(elo: number) {
   return { name: "아이언", color: "text-stone-500" };
 }
 
+type CriteriaScores = {
+  logic: number;
+  rebuttal: number;
+  consistency: number;
+  persuasion: number;
+  expression: number;
+  factual: number;
+};
+
 type BattleHistoryItem = {
   id: string;
   opponent: string;
@@ -37,16 +46,25 @@ type BattleHistoryItem = {
   theirScore: number;
   eloChange: number;
   date: string | null;
+  criteria: CriteriaScores | null;
+};
+
+type EloPoint = {
+  elo: number;
+  change: number;
+  date: string;
 };
 
 export function AgentDetail({
   agent,
   isOwner,
   battleHistory,
+  eloHistory,
 }: {
   agent: Agent;
   isOwner: boolean;
   battleHistory: BattleHistoryItem[];
+  eloHistory: EloPoint[];
 }) {
   const router = useRouter();
   const { deleteAgent } = useAgentStore();
@@ -87,6 +105,26 @@ export function AgentDetail({
           <StatCard label="패" value={String(agent.losses)} color="text-danger" />
           <StatCard label="승률" value={`${winRate}%`} color="text-accent" />
         </div>
+
+        {/* ELO Trend Graph */}
+        {eloHistory.length >= 2 && (
+          <section className="mt-6">
+            <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
+              ELO 추이
+            </h2>
+            <EloChart points={eloHistory} />
+          </section>
+        )}
+
+        {/* Per-Criteria Score Trends */}
+        {battleHistory.filter((b) => b.criteria).length >= 2 && (
+          <section className="mt-6">
+            <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
+              항목별 점수 추이
+            </h2>
+            <CriteriaTrends battles={battleHistory.filter((b) => b.criteria).reverse()} />
+          </section>
+        )}
 
         {/* Stats Radar */}
         <section className="mt-6">
@@ -373,5 +411,197 @@ function StatBar({ label, value }: { label: string; value: number }) {
         {value}
       </span>
     </div>
+  );
+}
+
+/* ─── ELO Trend Chart (pure SVG) ─── */
+function EloChart({ points }: { points: EloPoint[] }) {
+  const W = 360;
+  const H = 120;
+  const PX = 32; // padding x
+  const PY = 16; // padding y
+
+  const elos = points.map((p) => p.elo);
+  const minElo = Math.min(...elos);
+  const maxElo = Math.max(...elos);
+  const range = maxElo - minElo || 1;
+
+  // Map data to SVG coordinates
+  const coords = points.map((p, i) => {
+    const x = PX + (i / (points.length - 1)) * (W - PX * 2);
+    const y = PY + (1 - (p.elo - minElo) / range) * (H - PY * 2);
+    return { x, y, elo: p.elo, change: p.change };
+  });
+
+  const polyline = coords.map((c) => `${c.x},${c.y}`).join(" ");
+
+  // Gradient: green if net positive, red if net negative
+  const netChange = points[points.length - 1].elo - points[0].elo;
+  const strokeColor = netChange >= 0 ? "var(--success)" : "var(--danger)";
+
+  return (
+    <div className="mt-3 rounded-xl border border-border bg-surface p-3">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 140 }}>
+        {/* Grid lines */}
+        {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
+          const y = PY + frac * (H - PY * 2);
+          return (
+            <line
+              key={frac}
+              x1={PX}
+              y1={y}
+              x2={W - PX}
+              y2={y}
+              stroke="var(--border)"
+              strokeWidth={0.5}
+            />
+          );
+        })}
+        {/* ELO line */}
+        <polyline
+          points={polyline}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {/* Data points */}
+        {coords.map((c, i) => (
+          <circle
+            key={i}
+            cx={c.x}
+            cy={c.y}
+            r={3}
+            fill={c.change >= 0 ? "var(--success)" : "var(--danger)"}
+            stroke="var(--surface)"
+            strokeWidth={1.5}
+          />
+        ))}
+        {/* Min/Max labels */}
+        <text x={PX - 4} y={PY + 4} textAnchor="end" className="fill-text-muted" fontSize={9}>
+          {maxElo}
+        </text>
+        <text x={PX - 4} y={H - PY + 4} textAnchor="end" className="fill-text-muted" fontSize={9}>
+          {minElo}
+        </text>
+      </svg>
+      {/* Summary */}
+      <div className="mt-2 flex items-center justify-between text-xs">
+        <span className="text-text-muted">{points.length}전 기록</span>
+        <span className={`font-mono font-bold ${netChange >= 0 ? "text-success" : "text-danger"}`}>
+          {netChange >= 0 ? "+" : ""}{netChange} ELO
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Per-Criteria Score Trends ─── */
+const CRITERIA_KEYS = ["logic", "rebuttal", "consistency", "persuasion", "expression", "factual"] as const;
+const CRITERIA_KO: Record<string, string> = {
+  logic: "논증력",
+  rebuttal: "반박력",
+  consistency: "일관성",
+  persuasion: "설득력",
+  expression: "표현력",
+  factual: "정확성",
+};
+const CRITERIA_COLORS: Record<string, string> = {
+  logic: "var(--primary)",
+  rebuttal: "var(--danger)",
+  consistency: "var(--accent)",
+  persuasion: "var(--warning)",
+  expression: "var(--success)",
+  factual: "#a78bfa",
+};
+
+function CriteriaTrends({ battles }: { battles: BattleHistoryItem[] }) {
+  // battles are in chronological order (oldest first)
+  const count = battles.length;
+
+  // Calculate averages for the latest vs first half
+  const halfIdx = Math.floor(count / 2);
+  const firstHalf = battles.slice(0, halfIdx);
+  const secondHalf = battles.slice(halfIdx);
+
+  function avg(items: BattleHistoryItem[], key: keyof CriteriaScores): number {
+    const valid = items.filter((b) => b.criteria);
+    if (valid.length === 0) return 0;
+    return valid.reduce((sum, b) => sum + (b.criteria?.[key] ?? 0), 0) / valid.length;
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      {CRITERIA_KEYS.map((key) => {
+        const latestScore = battles[count - 1]?.criteria?.[key] ?? 0;
+        const avgFirst = avg(firstHalf, key);
+        const avgSecond = avg(secondHalf, key);
+        const trend = avgSecond - avgFirst;
+
+        return (
+          <div
+            key={key}
+            className="flex items-center gap-3 rounded-lg bg-surface/50 px-3 py-2"
+          >
+            <span className="w-16 text-xs font-medium text-text-muted">
+              {CRITERIA_KO[key]}
+            </span>
+            {/* Mini sparkline for this criteria */}
+            <MiniSparkline
+              values={battles.map((b) => b.criteria?.[key] ?? 0)}
+              color={CRITERIA_COLORS[key]}
+              max={20}
+            />
+            <span className="w-8 text-right font-mono text-xs font-bold text-text">
+              {latestScore}
+            </span>
+            <span
+              className={`w-10 text-right font-mono text-[10px] font-bold ${
+                trend > 0.5 ? "text-success" : trend < -0.5 ? "text-danger" : "text-text-muted"
+              }`}
+            >
+              {trend > 0 ? `+${trend.toFixed(1)}` : trend.toFixed(1)}
+            </span>
+          </div>
+        );
+      })}
+      <p className="text-right text-[10px] text-text-muted">
+        최근 {count}전 기준 · 추이는 전반/후반 평균 비교
+      </p>
+    </div>
+  );
+}
+
+function MiniSparkline({
+  values,
+  color,
+  max,
+}: {
+  values: number[];
+  color: string;
+  max: number;
+}) {
+  const W = 80;
+  const H = 20;
+  if (values.length < 2) return <div style={{ width: W, height: H }} />;
+
+  const coords = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * W;
+    const y = H - (v / max) * H;
+    return `${x},${y}`;
+  });
+
+  return (
+    <svg width={W} height={H} className="shrink-0">
+      <polyline
+        points={coords.join(" ")}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
