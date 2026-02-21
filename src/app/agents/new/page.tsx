@@ -3,12 +3,20 @@
 import { useAgentStore } from "@/stores/agentStore";
 import {
   type AgentStats,
+  type AgentPersonality,
   type Specialty,
+  type SpeakingStyle,
+  type DebatePhilosophy,
+  type StrategyPattern,
   PRESETS,
   SPECIALTIES,
   SPECIALTY_LABELS,
+  STAT_BUDGET,
   STAT_KEYS,
   STAT_LABELS,
+  SPEAKING_STYLES,
+  DEBATE_PHILOSOPHIES,
+  STRATEGY_PATTERNS,
 } from "@/types/agent";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -28,12 +36,15 @@ export default function NewAgentPage() {
   const [name, setName] = useState("");
   const [stats, setStats] = useState<AgentStats>({ ...DEFAULT_STATS });
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [personality, setPersonality] = useState<AgentPersonality>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const createAgent = useAgentStore((s) => s.createAgent);
 
   const totalPoints = STAT_KEYS.reduce((sum, k) => sum + stats[k], 0);
+  const overBudget = totalPoints > STAT_BUDGET;
+  const remaining = STAT_BUDGET - totalPoints;
 
   function setStat(key: keyof AgentStats, value: number) {
     setStats((prev) => ({ ...prev, [key]: value }));
@@ -58,7 +69,7 @@ export default function NewAgentPage() {
     setError(null);
     setSaving(true);
 
-    const agent = await createAgent(name.trim(), stats, specialties);
+    const agent = await createAgent(name.trim(), stats, specialties, personality);
     if (!agent) {
       setError(useAgentStore.getState().error ?? "Failed to create agent");
       setSaving(false);
@@ -121,10 +132,20 @@ export default function NewAgentPage() {
           <div>
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-text-muted">Stats (1-10)</p>
-              <p className="text-xs text-text-muted">
-                Total: <span className="font-mono text-text">{totalPoints}</span>/80
+              <p className={`text-xs ${overBudget ? "text-danger font-bold" : "text-text-muted"}`}>
+                <span className="font-mono text-text">{totalPoints}</span>/{STAT_BUDGET}
+                {overBudget
+                  ? ` (${-remaining} over!)`
+                  : remaining > 0
+                    ? ` (${remaining} left)`
+                    : ""}
               </p>
             </div>
+            {overBudget && (
+              <p className="mt-1 text-xs text-danger">
+                Over budget! Lower some stats to deploy your agent.
+              </p>
+            )}
             <div className="mt-3 space-y-3">
               {STAT_KEYS.map((key) => {
                 const label = STAT_LABELS[key];
@@ -177,6 +198,114 @@ export default function NewAgentPage() {
             </div>
           </div>
 
+          {/* Debate Style */}
+          <div>
+            <p className="text-sm font-medium text-text-muted">
+              Speaking Style <span className="text-text-muted/50">(optional)</span>
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {SPEAKING_STYLES.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() =>
+                    setPersonality((p) => ({
+                      ...p,
+                      speaking_style: p.speaking_style === s.id ? undefined : s.id,
+                    }))
+                  }
+                  className={`rounded-full px-3 py-1 text-sm transition ${
+                    personality.speaking_style === s.id
+                      ? "bg-accent text-white"
+                      : "border border-border bg-surface text-text-muted hover:bg-surface-hover"
+                  }`}
+                >
+                  {s.emoji} {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Debate Philosophy */}
+          <div>
+            <p className="text-sm font-medium text-text-muted">
+              Debate Philosophy <span className="text-text-muted/50">(optional)</span>
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {DEBATE_PHILOSOPHIES.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() =>
+                    setPersonality((prev) => ({
+                      ...prev,
+                      debate_philosophy: prev.debate_philosophy === p.id ? undefined : p.id,
+                    }))
+                  }
+                  className={`rounded-full px-3 py-1 text-sm transition ${
+                    personality.debate_philosophy === p.id
+                      ? "bg-accent text-white"
+                      : "border border-border bg-surface text-text-muted hover:bg-surface-hover"
+                  }`}
+                >
+                  {p.emoji} {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Strategy Pattern */}
+          <div>
+            <p className="text-sm font-medium text-text-muted">
+              Strategy Pattern <span className="text-text-muted/50">(optional)</span>
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {STRATEGY_PATTERNS.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() =>
+                    setPersonality((p) => ({
+                      ...p,
+                      strategy: p.strategy === s.id ? undefined : s.id,
+                    }))
+                  }
+                  className={`rounded-full px-3 py-1 text-sm transition ${
+                    personality.strategy === s.id
+                      ? "bg-accent text-white"
+                      : "border border-border bg-surface text-text-muted hover:bg-surface-hover"
+                  }`}
+                >
+                  {s.emoji} {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Custom Instructions */}
+          <div>
+            <label htmlFor="custom" className="block text-sm font-medium text-text-muted">
+              Custom Instructions <span className="text-text-muted/50">(optional, max 200 chars)</span>
+            </label>
+            <textarea
+              id="custom"
+              maxLength={200}
+              rows={2}
+              value={personality.custom_instructions ?? ""}
+              onChange={(e) =>
+                setPersonality((p) => ({
+                  ...p,
+                  custom_instructions: e.target.value || undefined,
+                }))
+              }
+              className="mt-1 block w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text placeholder-text-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="e.g. Always end with a rhetorical question"
+            />
+            <p className="mt-1 text-right text-xs text-text-muted">
+              {personality.custom_instructions?.length ?? 0}/200
+            </p>
+          </div>
+
           {/* Stat Summary */}
           <div className="rounded-xl border border-border bg-surface p-4">
             <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
@@ -191,10 +320,10 @@ export default function NewAgentPage() {
 
           <button
             type="submit"
-            disabled={saving || !name.trim()}
+            disabled={saving || !name.trim() || overBudget}
             className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
           >
-            {saving ? "Creating…" : "Deploy Agent"}
+            {saving ? "Creating…" : overBudget ? `Over Budget (${-remaining})` : "Deploy Agent"}
           </button>
         </form>
       </div>

@@ -4,11 +4,17 @@ import { useAgentStore } from "@/stores/agentStore";
 import {
   type Agent,
   type AgentStats,
+  type AgentPersonality,
   type Specialty,
   SPECIALTIES,
   SPECIALTY_LABELS,
+  STAT_BUDGET,
   STAT_KEYS,
   STAT_LABELS,
+  SPEAKING_STYLES,
+  DEBATE_PHILOSOPHIES,
+  STRATEGY_PATTERNS,
+  getPersonality,
 } from "@/types/agent";
 import { STAT_PROMPTS, tier, type Tier } from "@/data/prompts/battle";
 import { useRouter } from "next/navigation";
@@ -18,6 +24,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
   const [name, setName] = useState(agent.name);
   const [stats, setStats] = useState<AgentStats>({ ...agent.stats });
   const [specialties, setSpecialties] = useState<Specialty[]>([...agent.specialties]);
+  const [personality, setPersonality] = useState<AgentPersonality>(() => getPersonality(agent));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedStat, setExpandedStat] = useState<keyof AgentStats | null>(null);
@@ -25,13 +32,18 @@ export function AgentEditor({ agent }: { agent: Agent }) {
   const updateAgent = useAgentStore((s) => s.updateAgent);
 
   const totalPoints = STAT_KEYS.reduce((sum, k) => sum + stats[k], 0);
+  const overBudget = totalPoints > STAT_BUDGET;
+  const remaining = STAT_BUDGET - totalPoints;
 
   // Track what changed for the diff display
   const changedStats = STAT_KEYS.filter((k) => stats[k] !== agent.stats[k]);
+  const originalPersonality = getPersonality(agent);
+  const personalityChanged = JSON.stringify(personality) !== JSON.stringify(originalPersonality);
   const hasChanges =
     name !== agent.name ||
     changedStats.length > 0 ||
-    JSON.stringify(specialties) !== JSON.stringify(agent.specialties);
+    JSON.stringify(specialties) !== JSON.stringify(agent.specialties) ||
+    personalityChanged;
 
   function setStat(key: keyof AgentStats, value: number) {
     setStats((prev) => ({ ...prev, [key]: value }));
@@ -53,6 +65,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
       name: name.trim(),
       stats,
       specialties,
+      personality,
     });
 
     if (!ok) {
@@ -101,10 +114,20 @@ export function AgentEditor({ agent }: { agent: Agent }) {
           <div>
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-text-muted">Stats (1-10)</p>
-              <p className="text-xs text-text-muted">
-                Total: <span className="font-mono text-text">{totalPoints}</span>/80
+              <p className={`text-xs ${overBudget ? "text-danger font-bold" : "text-text-muted"}`}>
+                <span className="font-mono text-text">{totalPoints}</span>/{STAT_BUDGET}
+                {overBudget
+                  ? ` (${-remaining} over!)`
+                  : remaining > 0
+                    ? ` (${remaining} left)`
+                    : ""}
               </p>
             </div>
+            {overBudget && (
+              <p className="mt-1 text-xs text-danger">
+                Over budget! Lower some stats to save.
+              </p>
+            )}
             <div className="mt-3 space-y-1">
               {STAT_KEYS.map((key) => {
                 const label = STAT_LABELS[key];
@@ -127,13 +150,13 @@ export function AgentEditor({ agent }: { agent: Agent }) {
                           onChange={(e) => setStat(key, Number(e.target.value))}
                           className="h-2 w-full cursor-pointer appearance-none rounded-full bg-border accent-primary"
                         />
-                        {/* Tier threshold markers */}
+                        {/* Tier threshold markers at 4, 7, 9 */}
                         <div className="pointer-events-none absolute -top-1 left-0 flex w-full justify-between px-[3px]">
                           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                             <span
                               key={n}
                               className={`h-1 w-0.5 ${
-                                n === 4 || n === 7
+                                n === 4 || n === 7 || n === 9
                                   ? "bg-warning"
                                   : "bg-transparent"
                               }`}
@@ -145,12 +168,14 @@ export function AgentEditor({ agent }: { agent: Agent }) {
                         {value}
                       </span>
                       <span
-                        className={`w-10 rounded px-1 text-center text-[10px] font-bold uppercase ${
+                        className={`w-12 rounded px-1 text-center text-[10px] font-bold uppercase ${
                           currentTier === "low"
                             ? "bg-danger/15 text-danger"
-                            : currentTier === "high"
-                              ? "bg-success/15 text-success"
-                              : "bg-warning/15 text-warning"
+                            : currentTier === "extreme"
+                              ? "bg-accent/15 text-accent"
+                              : currentTier === "high"
+                                ? "bg-success/15 text-success"
+                                : "bg-warning/15 text-warning"
                         }`}
                       >
                         {currentTier}
@@ -174,9 +199,9 @@ export function AgentEditor({ agent }: { agent: Agent }) {
                     {/* Expanded: show all tier effects */}
                     {isExpanded && (
                       <div className="mb-2 ml-9 mt-1 space-y-1 rounded-lg border border-border bg-surface/50 p-3">
-                        {(["low", "mid", "high"] as Tier[]).map((t) => {
+                        {(["low", "mid", "high", "extreme"] as Tier[]).map((t) => {
                           const isCurrent = t === currentTier;
-                          const range = t === "low" ? "1-3" : t === "mid" ? "4-6" : "7-10";
+                          const range = t === "low" ? "1-3" : t === "mid" ? "4-6" : t === "high" ? "7-8" : "9-10";
                           return (
                             <div
                               key={t}
@@ -229,6 +254,114 @@ export function AgentEditor({ agent }: { agent: Agent }) {
             </div>
           </div>
 
+          {/* Speaking Style */}
+          <div>
+            <p className="text-sm font-medium text-text-muted">
+              Speaking Style <span className="text-text-muted/50">(optional)</span>
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {SPEAKING_STYLES.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() =>
+                    setPersonality((p) => ({
+                      ...p,
+                      speaking_style: p.speaking_style === s.id ? undefined : s.id,
+                    }))
+                  }
+                  className={`rounded-full px-3 py-1 text-sm transition ${
+                    personality.speaking_style === s.id
+                      ? "bg-accent text-white"
+                      : "border border-border bg-surface text-text-muted hover:bg-surface-hover"
+                  }`}
+                >
+                  {s.emoji} {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Debate Philosophy */}
+          <div>
+            <p className="text-sm font-medium text-text-muted">
+              Debate Philosophy <span className="text-text-muted/50">(optional)</span>
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {DEBATE_PHILOSOPHIES.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() =>
+                    setPersonality((prev) => ({
+                      ...prev,
+                      debate_philosophy: prev.debate_philosophy === p.id ? undefined : p.id,
+                    }))
+                  }
+                  className={`rounded-full px-3 py-1 text-sm transition ${
+                    personality.debate_philosophy === p.id
+                      ? "bg-accent text-white"
+                      : "border border-border bg-surface text-text-muted hover:bg-surface-hover"
+                  }`}
+                >
+                  {p.emoji} {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Strategy Pattern */}
+          <div>
+            <p className="text-sm font-medium text-text-muted">
+              Strategy Pattern <span className="text-text-muted/50">(optional)</span>
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {STRATEGY_PATTERNS.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() =>
+                    setPersonality((p) => ({
+                      ...p,
+                      strategy: p.strategy === s.id ? undefined : s.id,
+                    }))
+                  }
+                  className={`rounded-full px-3 py-1 text-sm transition ${
+                    personality.strategy === s.id
+                      ? "bg-accent text-white"
+                      : "border border-border bg-surface text-text-muted hover:bg-surface-hover"
+                  }`}
+                >
+                  {s.emoji} {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Custom Instructions */}
+          <div>
+            <label htmlFor="custom" className="block text-sm font-medium text-text-muted">
+              Custom Instructions <span className="text-text-muted/50">(optional, max 200 chars)</span>
+            </label>
+            <textarea
+              id="custom"
+              maxLength={200}
+              rows={2}
+              value={personality.custom_instructions ?? ""}
+              onChange={(e) =>
+                setPersonality((p) => ({
+                  ...p,
+                  custom_instructions: e.target.value || undefined,
+                }))
+              }
+              className="mt-1 block w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text placeholder-text-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="e.g. Always end with a rhetorical question"
+            />
+            <p className="mt-1 text-right text-xs text-text-muted">
+              {personality.custom_instructions?.length ?? 0}/200
+            </p>
+          </div>
+
           {/* Change Summary */}
           {hasChanges && (
             <div className="rounded-xl border border-warning/30 bg-warning/10 p-4">
@@ -250,6 +383,9 @@ export function AgentEditor({ agent }: { agent: Agent }) {
                 {JSON.stringify(specialties) !== JSON.stringify(agent.specialties) && (
                   <li>Specialties updated</li>
                 )}
+                {personalityChanged && (
+                  <li>Debate personality updated</li>
+                )}
               </ul>
             </div>
           )}
@@ -258,10 +394,10 @@ export function AgentEditor({ agent }: { agent: Agent }) {
 
           <button
             type="submit"
-            disabled={saving || !name.trim() || !hasChanges}
+            disabled={saving || !name.trim() || !hasChanges || overBudget}
             className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
           >
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? "Saving..." : overBudget ? `Over Budget (${-remaining})` : "Save Changes"}
           </button>
         </form>
       </div>

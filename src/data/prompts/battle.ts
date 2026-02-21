@@ -1,14 +1,21 @@
 import type { Agent, AgentStats, Specialty } from "@/types/agent";
+import {
+  getPersonality,
+  SPEAKING_STYLES,
+  DEBATE_PHILOSOPHIES,
+  STRATEGY_PATTERNS,
+} from "@/types/agent";
 import type { TurnType } from "@/types/battle";
 
-// ─── Stat-to-Prompt Mapping (P014 — 3 tiers per stat) ───
+// ─── Stat-to-Prompt Mapping (P014 — 4 tiers per stat) ───
 
-export type Tier = "low" | "mid" | "high";
+export type Tier = "low" | "mid" | "high" | "extreme";
 
 export function tier(value: number): Tier {
   if (value <= 3) return "low";
   if (value <= 6) return "mid";
-  return "high";
+  if (value <= 8) return "high";
+  return "extreme";
 }
 
 export const STAT_PROMPTS: Record<keyof AgentStats, Record<Tier, string>> = {
@@ -16,41 +23,49 @@ export const STAT_PROMPTS: Record<keyof AgentStats, Record<Tier, string>> = {
     low: "Rely on intuition, personal stories, and anecdotes rather than formal logic.",
     mid: "Balance logical reasoning with relatable examples and analogies.",
     high: "Use rigorous formal logic. Identify and dismantle weak premises in opposing arguments. Structure every claim with clear evidence.",
+    extreme: "You are a logic machine. Construct syllogistic chains. Identify every logical fallacy by name. Demand formal proof for every opponent claim. Accept nothing without rigorous evidence.",
   },
   aggression: {
     low: "Be respectful and conciliatory. Acknowledge your opponent's good points. Only defend your position when directly challenged.",
     mid: "Politely but firmly point out inconsistencies and weaknesses in your opponent's arguments.",
     high: "Aggressively target the weakest parts of your opponent's argument. Never concede a point. Use sharp, confrontational language.",
+    extreme: "Relentlessly attack every single claim your opponent makes. Use cutting sarcasm. Give zero ground. Make them defend every word. You are here to destroy their argument completely.",
   },
   brevity: {
     low: "Elaborate richly on each point. Use detailed explanations, extended examples, and thorough analysis.",
     mid: "Focus on one key point per response with supporting detail. Be clear but not verbose.",
     high: "Maximum 3 sentences per response. Be punchy and direct. Every word must earn its place.",
+    extreme: "Maximum 2 sentences. Hit like a hammer. One devastating point per turn. Silence is a weapon — say less, mean more.",
   },
   humor: {
     low: "Be completely serious and formal. No humor, irony, or lightheartedness.",
     mid: "Use occasional wit or clever phrasing to make points more memorable.",
     high: "Lead with satire, irony, or clever humor. Use comedic timing to undermine opposing arguments and win over the audience.",
+    extreme: "You are a stand-up comedian in a debate. Open with a joke that destroys the opposition. Use absurdist humor, savage wit, and comedic callbacks. Make the audience laugh while dismantling arguments.",
   },
   boldness: {
     low: "Stick to safe, mainstream, consensus positions. Avoid controversy.",
     mid: "Take a clear position while acknowledging complexity and nuance.",
     high: "Be provocative and contrarian. Take extreme or unconventional stances. Challenge assumptions that others accept without question.",
+    extreme: "Be maximally provocative. Say what no one else dares to say. Flip the entire premise on its head. Your goal is to shock with intellectual audacity — make a case so bold it forces everyone to reconsider their assumptions.",
   },
   creativity: {
     low: "Rely on established facts, conventional wisdom, and well-known arguments.",
     mid: "Occasionally offer fresh perspectives or novel analogies alongside standard arguments.",
     high: "Bring completely novel angles to the debate. Reframe the entire discussion. Use unexpected metaphors and thought experiments.",
+    extreme: "Invent entirely new frameworks. Use cross-domain analogies no one has considered. Turn the topic into a thought experiment, a paradox, or a story. Your arguments should feel like they came from another dimension.",
   },
   knowledge: {
     low: "Use everyday language and common knowledge. Keep things accessible.",
     mid: "Use relevant terminology and reference well-known studies or theories when appropriate.",
     high: "Demonstrate deep domain expertise. Use precise technical terminology. Reference specific theories, data, and research.",
+    extreme: "You are a world-class domain expert. Cite specific papers, authors, and dates. Use field-specific jargon precisely. Reference cutting-edge research. Your depth of knowledge should be intimidating.",
   },
   adaptability: {
     low: "Maintain your initial strategy regardless of how the debate evolves.",
     mid: "Show moderate flexibility — adjust emphasis based on opponent's strongest points.",
     high: "Continuously read your opponent's strategy. Shift your approach mid-debate. Exploit patterns in their argumentation style.",
+    extreme: "You are a debate chameleon. Mirror and counter every shift your opponent makes. If they go emotional, go logical. If they go logical, reframe poetically. Always be one step ahead. Turn their every strength into a vulnerability.",
   },
 };
 
@@ -83,6 +98,25 @@ export function buildAgentSystemPrompt(
   const side = role === "pro" ? "IN FAVOR OF" : "AGAINST";
   const stats = agent.stats;
 
+  // Build personality block from presets
+  const personality = getPersonality(agent);
+  const personalityLines: string[] = [];
+  if (personality.speaking_style) {
+    const style = SPEAKING_STYLES.find((s) => s.id === personality.speaking_style);
+    if (style) personalityLines.push(style.prompt);
+  }
+  if (personality.debate_philosophy) {
+    const phil = DEBATE_PHILOSOPHIES.find((p) => p.id === personality.debate_philosophy);
+    if (phil) personalityLines.push(phil.prompt);
+  }
+  if (personality.strategy) {
+    const strat = STRATEGY_PATTERNS.find((s) => s.id === personality.strategy);
+    if (strat) personalityLines.push(strat.prompt);
+  }
+  if (personality.custom_instructions) {
+    personalityLines.push(`Additional instructions from your creator: ${personality.custom_instructions}`);
+  }
+
   const lines = [
     `You are "${agent.name}", a competitive debate agent arguing ${side} the following topic:`,
     `"${topic}"`,
@@ -97,6 +131,9 @@ export function buildAgentSystemPrompt(
     STAT_PROMPTS.knowledge[tier(stats.knowledge)],
     STAT_PROMPTS.adaptability[tier(stats.adaptability)],
     specialtyLine(agent.specialties),
+    ...(personalityLines.length > 0
+      ? ["", "Your speaking approach and strategy:", ...personalityLines]
+      : []),
     "",
     TURN_INSTRUCTIONS[turnType],
   ];

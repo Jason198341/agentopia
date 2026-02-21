@@ -22,6 +22,9 @@ export const STAT_LABELS: Record<keyof AgentStats, { en: string; ko: string; emo
 
 export const STAT_KEYS = Object.keys(STAT_LABELS) as (keyof AgentStats)[];
 
+/** Maximum total stat points allowed. Avg 7 per stat — forces tradeoffs. */
+export const STAT_BUDGET = 56;
+
 export const SPECIALTIES = [
   "politics",
   "technology",
@@ -50,6 +53,41 @@ export const SPECIALTY_LABELS: Record<Specialty, { en: string; emoji: string }> 
   environment: { en: "Environment", emoji: "🌍" },
 };
 
+// ─── Personality System: "how" the agent debates (text/presets) ───
+
+export const SPEAKING_STYLES = [
+  { id: "socratic", label: "Socratic Questioning", emoji: "🏛️", prompt: "Use the Socratic method — ask probing questions that expose contradictions in the opponent's reasoning. Guide the audience to your conclusion through questions, not declarations." },
+  { id: "courtroom", label: "Courtroom Attorney", emoji: "⚖️", prompt: "Argue like a trial lawyer. Present evidence methodically, cross-examine the opponent's claims, and build an airtight case. Use phrases like 'the evidence shows' and 'I put it to you that'." },
+  { id: "ted-talk", label: "TED Talk Speaker", emoji: "🎤", prompt: "Speak like a TED presenter. Open with a compelling story or surprising fact. Build to a clear thesis. Use pauses for effect. Make complex ideas accessible and inspiring." },
+  { id: "comedian", label: "Stand-up Comedian", emoji: "🎭", prompt: "Debate like a stand-up comedian. Use callbacks, punchlines, and absurdist humor to make your points memorable. Roast bad arguments. Make the audience laugh their way to your side." },
+  { id: "academic", label: "Academic Paper", emoji: "📝", prompt: "Write like an academic paper. Be precise, cite frameworks by name, use hedging language where appropriate ('evidence suggests'), and structure arguments with clear thesis-evidence-conclusion flow." },
+] as const;
+
+export const DEBATE_PHILOSOPHIES = [
+  { id: "utilitarian", label: "Utilitarian", emoji: "📊", prompt: "Judge everything by outcomes and consequences. 'The greatest good for the greatest number' is your north star. Use cost-benefit analysis. Quantify impact when possible." },
+  { id: "deontologist", label: "Deontologist", emoji: "📜", prompt: "Focus on principles, duties, and rights — not consequences. Some things are right or wrong regardless of outcomes. Invoke universal rules and moral imperatives." },
+  { id: "pragmatist", label: "Pragmatist", emoji: "🔧", prompt: "Focus on what actually works in practice, not theory. Use real-world examples and case studies. Dismiss idealism in favor of implementable solutions." },
+  { id: "contrarian", label: "Devil's Advocate", emoji: "😈", prompt: "Systematically challenge every assumption. If consensus says X, explore why X might be wrong. Find the strongest counterargument to the popular view and champion it." },
+] as const;
+
+export const STRATEGY_PATTERNS = [
+  { id: "deconstruct", label: "Deconstruct Point-by-Point", emoji: "🔬", prompt: "Address each of your opponent's arguments individually. Quote them, then systematically dismantle each claim. Leave no argument unanswered." },
+  { id: "big-picture", label: "Big Picture Dominance", emoji: "🌍", prompt: "Don't get bogged down in details. Zoom out to the meta-level. Frame the entire debate around the largest possible stakes. Make your opponent's points seem trivially small." },
+  { id: "reverse", label: "Reverse Their Logic", emoji: "🔄", prompt: "Take your opponent's own premises, data, and logic — then show how they actually support YOUR position. Turn their strengths into evidence for your case." },
+  { id: "narrative", label: "Storytelling & Emotion", emoji: "📖", prompt: "Build your argument around compelling stories, vivid scenarios, and emotional truths. Use 'imagine if' thought experiments. Make the audience feel your position, not just think it." },
+] as const;
+
+export type SpeakingStyle = (typeof SPEAKING_STYLES)[number]["id"];
+export type DebatePhilosophy = (typeof DEBATE_PHILOSOPHIES)[number]["id"];
+export type StrategyPattern = (typeof STRATEGY_PATTERNS)[number]["id"];
+
+export interface AgentPersonality {
+  speaking_style?: SpeakingStyle;
+  debate_philosophy?: DebatePhilosophy;
+  strategy?: StrategyPattern;
+  custom_instructions?: string; // max 200 chars
+}
+
 export interface Agent {
   id: string;
   owner_id: string;
@@ -57,7 +95,7 @@ export interface Agent {
   // Stats stored as stat_* columns in DB
   stats: AgentStats;
   specialties: Specialty[];
-  traits: Record<string, number>;
+  traits: Record<string, unknown>;
   manual_overrides: Record<string, number>;
   elo: number;
   wins: number;
@@ -132,7 +170,7 @@ export function dbToAgent(row: Record<string, unknown>): Agent {
       adaptability: row.stat_adaptability as number,
     },
     specialties: (row.specialties as Specialty[]) ?? [],
-    traits: (row.traits as Record<string, number>) ?? {},
+    traits: (row.traits as Record<string, unknown>) ?? {},
     manual_overrides: (row.manual_overrides as Record<string, number>) ?? {},
     elo: row.elo as number,
     wins: row.wins as number,
@@ -141,6 +179,19 @@ export function dbToAgent(row: Record<string, unknown>): Agent {
     is_active: row.is_active as boolean,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
+  };
+}
+
+/** Extract personality from agent traits (stored in traits._personality) */
+export function getPersonality(agent: Agent): AgentPersonality {
+  const raw = (agent.traits as Record<string, unknown>)?._personality;
+  if (!raw || typeof raw !== "object") return {};
+  const p = raw as Record<string, string>;
+  return {
+    speaking_style: p.speaking_style as SpeakingStyle | undefined,
+    debate_philosophy: p.debate_philosophy as DebatePhilosophy | undefined,
+    strategy: p.strategy as StrategyPattern | undefined,
+    custom_instructions: p.custom_instructions,
   };
 }
 

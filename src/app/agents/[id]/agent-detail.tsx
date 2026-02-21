@@ -8,6 +8,10 @@ import {
   STAT_LABELS,
   SPECIALTY_LABELS,
   type Specialty,
+  getPersonality,
+  SPEAKING_STYLES,
+  DEBATE_PHILOSOPHIES,
+  STRATEGY_PATTERNS,
 } from "@/types/agent";
 import { BADGE_MAP } from "@/types/badge";
 import { STAT_PROMPTS, tier as statTier } from "@/data/prompts/battle";
@@ -118,6 +122,7 @@ export function AgentDetail({
                     </span>
                     <span className={`ml-1.5 rounded px-1 text-[10px] font-bold uppercase ${
                       t === "low" ? "bg-danger/15 text-danger"
+                        : t === "extreme" ? "bg-accent/15 text-accent"
                         : t === "high" ? "bg-success/15 text-success"
                         : "bg-warning/15 text-warning"
                     }`}>
@@ -130,6 +135,48 @@ export function AgentDetail({
             })}
           </div>
         </section>
+
+        {/* Debate Approach (personality presets) */}
+        {(() => {
+          const p = getPersonality(agent);
+          const style = p.speaking_style ? SPEAKING_STYLES.find((s) => s.id === p.speaking_style) : null;
+          const phil = p.debate_philosophy ? DEBATE_PHILOSOPHIES.find((d) => d.id === p.debate_philosophy) : null;
+          const strat = p.strategy ? STRATEGY_PATTERNS.find((s) => s.id === p.strategy) : null;
+          const hasAny = style || phil || strat || p.custom_instructions;
+          return hasAny ? (
+            <section className="mt-6">
+              <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
+                Debate Approach
+              </h2>
+              <div className="mt-3 space-y-2">
+                {style && (
+                  <div className="rounded-lg bg-surface/50 px-3 py-2">
+                    <span className="text-xs font-semibold text-accent">{style.emoji} {style.label}</span>
+                    <p className="mt-0.5 text-xs leading-relaxed text-text-muted">{style.prompt}</p>
+                  </div>
+                )}
+                {phil && (
+                  <div className="rounded-lg bg-surface/50 px-3 py-2">
+                    <span className="text-xs font-semibold text-accent">{phil.emoji} {phil.label}</span>
+                    <p className="mt-0.5 text-xs leading-relaxed text-text-muted">{phil.prompt}</p>
+                  </div>
+                )}
+                {strat && (
+                  <div className="rounded-lg bg-surface/50 px-3 py-2">
+                    <span className="text-xs font-semibold text-accent">{strat.emoji} {strat.label}</span>
+                    <p className="mt-0.5 text-xs leading-relaxed text-text-muted">{strat.prompt}</p>
+                  </div>
+                )}
+                {p.custom_instructions && (
+                  <div className="rounded-lg bg-surface/50 px-3 py-2">
+                    <span className="text-xs font-semibold text-accent">Custom Instructions</span>
+                    <p className="mt-0.5 text-xs leading-relaxed text-text-muted">{p.custom_instructions}</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          ) : null;
+        })()}
 
         {/* Badges */}
         {(() => {
