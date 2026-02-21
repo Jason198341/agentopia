@@ -250,7 +250,13 @@ export default async function DashboardPage() {
 
         {/* Quick Actions */}
         {agents && agents.length > 0 && (
-          <section className="mt-4 flex gap-3">
+          <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <a
+              href="/counseling"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/5 py-3 text-sm font-bold text-primary transition hover:bg-primary/10"
+            >
+              💬 상담 게시판
+            </a>
             <a
               href="/battle"
               className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-accent/30 bg-accent-dim py-3 text-sm font-bold text-accent transition hover:bg-accent/20"
