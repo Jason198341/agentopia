@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dbToAgent } from "@/types/agent";
 import { TURN_SEQUENCE } from "@/types/battle";
-import { pickTopicForElo } from "@/data/topics";
+import { pickTopicFromDb } from "@/data/topics";
 import { runFullBattle } from "@/lib/battle-engine";
 import { checkNewBadges } from "@/types/badge";
 import { NextResponse } from "next/server";
@@ -94,9 +94,9 @@ export async function POST(request: Request) {
   const agentA = playerIsPro ? playerAgent : opponentAgent; // PRO
   const agentB = playerIsPro ? opponentAgent : playerAgent; // CON
 
-  // 6. Pick topic (ELO-based difficulty: <1000 casual, 1000-1500 standard, 1500+ advanced)
+  // 6. Pick topic from DB (ELO-based difficulty), fallback to hardcoded
   const avgElo = Math.round((playerAgent.elo + opponentAgent.elo) / 2);
-  const { topic, category } = pickTopicForElo(avgElo);
+  const { topic, category, topicId } = await pickTopicFromDb(admin, avgElo);
 
   // 7. Create battle record (pending)
   const { data: battle, error: battleErr } = await admin
@@ -188,7 +188,17 @@ export async function POST(request: Request) {
       })
       .eq("id", agentB.id);
 
-    // 12. Record ELO history
+    // 12. Update topic stats (pro_wins / con_wins)
+    if (topicId && result.winner_id) {
+      const winnerIsPro = result.winner_id === agentA.id;
+      const field = winnerIsPro ? "pro_wins" : "con_wins";
+      const { data: topicRow } = await admin.from("topics").select(field).eq("id", topicId).single();
+      if (topicRow) {
+        await admin.from("topics").update({ [field]: (topicRow as Record<string, number>)[field] + 1 }).eq("id", topicId);
+      }
+    }
+
+    // 13. Record ELO history (renumbered after topic stats)
     await admin.from("elo_history").insert([
       {
         agent_id: agentA.id,
@@ -206,7 +216,7 @@ export async function POST(request: Request) {
       },
     ]);
 
-    // 13. Award badges for the player's agent
+    // 14. Award badges for the player's agent
     const playerIsA = agentA.id === playerAgent.id;
     const playerWon = result.winner_id === playerAgent.id;
     const playerScoreTotal = playerIsA
@@ -240,7 +250,7 @@ export async function POST(request: Request) {
       recentResults,
     });
 
-    // 14. Auto-trait evolution (P015)
+    // 15. Auto-trait evolution (P015)
     const totalBattles = playerAgent.wins + playerAgent.losses + 1;
     const currentTraits = { ...playerAgent.traits };
     const streak = countStreak(recentResults);
