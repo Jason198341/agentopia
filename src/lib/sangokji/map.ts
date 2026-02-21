@@ -42,6 +42,7 @@ export function generateMap(size = 5): Tile[][] {
     }
   }
 
+  ensureCornerAccessible(tiles, size);
   return tiles;
 }
 
@@ -118,4 +119,92 @@ export function getFrontierTiles(tiles: Tile[][], agent: SGAgent): Tile[] {
   }
 
   return frontier;
+}
+
+export interface AttackTarget {
+  key: string;           // "x,y"
+  terrain: Terrain;
+  ownerName: string;
+  garrison: number;      // defender troops on this tile
+}
+
+export interface ExpandTarget {
+  key: string;
+  terrain: Terrain;
+}
+
+/**
+ * Compute tiles the agent can ATTACK right now:
+ * enemy-owned, non-mountain tiles adjacent to any of the agent's tiles.
+ */
+export function getAttackableTargets(
+  tiles: Tile[][],
+  agent: SGAgent,
+  agentNames: Record<string, string>
+): AttackTarget[] {
+  const seen = new Set<string>();
+  const targets: AttackTarget[] = [];
+
+  for (const key of agent.territory) {
+    for (const adj of getAdjacentTiles(tiles, key)) {
+      const adjKey = `${adj.x},${adj.y}`;
+      if (seen.has(adjKey)) continue;
+      seen.add(adjKey);
+
+      if (adj.terrain !== 'mountain' && adj.owner && adj.owner !== agent.id) {
+        targets.push({
+          key: adjKey,
+          terrain: adj.terrain,
+          ownerName: agentNames[adj.owner] ?? adj.owner,
+          garrison: adj.garrison,
+        });
+      }
+    }
+  }
+
+  return targets;
+}
+
+/**
+ * Compute neutral tiles the agent can EXPAND into right now.
+ */
+export function getExpandableTargets(
+  tiles: Tile[][],
+  agent: SGAgent
+): ExpandTarget[] {
+  const seen = new Set<string>();
+  const targets: ExpandTarget[] = [];
+
+  for (const key of agent.territory) {
+    for (const adj of getAdjacentTiles(tiles, key)) {
+      const adjKey = `${adj.x},${adj.y}`;
+      if (seen.has(adjKey)) continue;
+      seen.add(adjKey);
+
+      if (adj.terrain !== 'mountain' && !adj.owner) {
+        targets.push({ key: adjKey, terrain: adj.terrain });
+      }
+    }
+  }
+
+  return targets;
+}
+
+/**
+ * Guarantee each corner has at least one non-mountain neighbor.
+ * Converts one mountain neighbor to plain if needed.
+ */
+export function ensureCornerAccessible(tiles: Tile[][], size: number): void {
+  const corners: [number, number][] = [
+    [0, 0], [size - 1, 0], [0, size - 1], [size - 1, size - 1],
+  ];
+
+  for (const [cx, cy] of corners) {
+    const neighbors = getAdjacentTiles(tiles, `${cx},${cy}`);
+    const hasPath = neighbors.some((t) => t.terrain !== 'mountain');
+    if (!hasPath && neighbors.length > 0) {
+      // Convert first neighbor to plain
+      neighbors[0].terrain = 'plain';
+    }
+  }
 }

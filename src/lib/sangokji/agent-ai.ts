@@ -1,5 +1,5 @@
 import { fireworksCompletion } from '@/lib/ai';
-import { toASCII } from './map';
+import { toASCII, getAttackableTargets, getExpandableTargets } from './map';
 import type { SGGameState, SGAgent, AgentDecision, AgentAction, ActionType } from '@/types/sangokji';
 
 // Default fallback when AI call fails
@@ -7,49 +7,69 @@ const DEFAULT_ACTION: AgentAction = { type: 'DEFEND', params: {} };
 
 /**
  * Build system + user prompts for a single agent.
- * Kept under ~800 tokens to minimize cost.
+ * Explicitly lists attackable/expandable targets so the LLM doesn't need
+ * to do spatial reasoning from ASCII art.
  */
 export function buildPrompt(
   state: SGGameState,
   agent: SGAgent
 ): { system: string; user: string } {
-  const asciiMap = toASCII(state.tiles, agent.id);
+  const agentNames = Object.fromEntries(state.agents.map((a) => [a.id, a.name]));
 
-  const enemyStatus = state.agents
-    .filter((a) => a.id !== agent.id && a.alive)
-    .map((a) => `- ${a.name}(${a.id}): 영토 ${a.territory.length}칸, 병력 ${a.troops}`)
-    .join('\n');
+  // Pre-compute valid targets — removes spatial reasoning burden from LLM
+  const attackTargets = getAttackableTargets(state.tiles, agent, agentNames);
+  const expandTargets = getExpandableTargets(state.tiles, agent);
+
+  const attackLines = attackTargets.length > 0
+    ? attackTargets.map((t) => {
+        const ratio = agent.troops > 0 && t.garrison > 0
+          ? (agent.troops / t.garrison).toFixed(1)
+          : agent.troops > 0 ? '∞' : '0';
+        const advice = agent.troops >= t.garrison * 1.5 ? ' ← 유리' : t.garrison > agent.troops ? ' ← 불리' : '';
+        return `  - [${t.key}] ${t.terrain}(${t.ownerName} 방어 ${t.garrison}명, 내 병력 ${agent.troops}명, 비율 ${ratio}배)${advice}`;
+      }).join('\n')
+    : '  없음 (현재 인접한 적 타일 없음)';
+
+  const expandLines = expandTargets.length > 0
+    ? expandTargets.map((t) => `  - [${t.key}] ${t.terrain}`).join('\n')
+    : '  없음';
+
+  const turnsLeft = state.max_turns - state.turn;
+  const urgency = turnsLeft <= 10
+    ? `\n⚠️ 잔여 턴 ${turnsLeft}턴! 최다 영토 보유자가 승리합니다. 지금 즉시 공격/점령하세요!`
+    : turnsLeft <= 20
+    ? `\n📌 후반전(잔여 ${turnsLeft}턴). 영토 확장이 중요합니다.`
+    : '';
 
   const system = `당신은 전략 시뮬레이션 게임의 AI 군주입니다.
 성격: ${agent.personality}
 전략: ${agent.strategy}
 
-반드시 JSON 형식으로만 응답하세요:
-{
-  "reasoning": "한 문장 판단 이유",
-  "actions": [
-    { "type": "EXPAND|RECRUIT|ATTACK|DEFEND", "params": { "target": "x,y" 또는 {} } }
-  ]
-}
+반드시 JSON만 응답하세요:
+{"reasoning":"이유","actions":[{"type":"EXPAND|RECRUIT|ATTACK|DEFEND","params":{"target":"x,y"}}]}
 
-규칙:
-- EXPAND: 인접한 빈 타일 점령 (params.target: "x,y")
-- RECRUIT: 수도에서 병력 모집 (gold 5 소모, 병력 +3)
-- ATTACK: 인접한 적 타일 공격 (params.target: "x,y")
-- DEFEND: 이번 턴 방어 태세
-- actions 배열에 1~2개 행동만 포함`;
+행동 규칙:
+- EXPAND: 빈 타일 점령. params.target = "x,y" (점령 가능 목록에서 선택)
+- RECRUIT: 수도에서 병력+3. gold -5 필요. params = {}
+- ATTACK: 적 타일 공격. params.target = "x,y" (공격 가능 목록에서 선택)
+- DEFEND: 방어. params = {}
+공격 판단: 내 병력 ≥ 적 수비대 × 1.3이면 공격 유리. 잔여 턴이 적을수록 공격 우선.`;
 
-  const user = `현재 턴: ${state.turn}/${state.max_turns}
-나(${agent.name}): 영토 ${agent.territory.length}칸, 병력 ${agent.troops}, food ${agent.resources.food}, gold ${agent.resources.gold}
-수도: ${agent.capital}
+  const user = `턴 ${state.turn}/${state.max_turns}${urgency}
 
-맵 (${agent.id[agent.id.length-1] === '0' ? 'A' : agent.id[agent.id.length-1] === '1' ? 'B' : agent.id[agent.id.length-1] === '2' ? 'C' : 'D'}=내 영토, 소문자=적, .=평원, F=숲, #=산):
-${asciiMap}
+나(${agent.name}): 영토 ${agent.territory.length}칸 | 병력 ${agent.troops} | 식량 ${agent.resources.food} | 금 ${agent.resources.gold}
 
-적 세력:
-${enemyStatus || '없음'}
+공격 가능 타일 (즉시 공격 가능한 인접 적 타일):
+${attackLines}
 
-행동을 결정하세요.`;
+점령 가능 타일 (인접한 빈 타일):
+${expandLines}
+
+적 세력 요약:
+${state.agents.filter((a) => a.id !== agent.id && a.alive)
+  .map((a) => `  - ${a.name}: 영토 ${a.territory.length}칸 병력 ${a.troops}`).join('\n') || '  없음'}
+
+행동 1~2개를 위 목록에서 골라 결정하세요.`;
 
   return { system, user };
 }

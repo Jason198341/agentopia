@@ -17,28 +17,28 @@ const PRESET_AGENTS: Omit<SGAgent, 'resources' | 'troops' | 'territory' | 'capit
     id: 'agent_0',
     name: '화영국',
     color: '#ef4444',
-    strategy: '최대한 빠르게 영토를 확장해라. 병력 생산을 최우선으로 하고 약한 이웃을 먼저 정복해라.',
+    strategy: '공격이 최선의 방어다. 내 병력이 적 수비대보다 많으면 무조건 공격해라. 빈 타일은 즉시 점령해라. 병력이 부족하면 RECRUIT해라.',
     personality: '호전적 군주',
   },
   {
     id: 'agent_1',
     name: '청풍국',
     color: '#06b6d4',
-    strategy: '초반에는 절대 공격하지 마라. 자원에 집중하고 충분히 강해진 후에만 공격해라.',
+    strategy: '초반 10턴은 빈 타일 점령에 집중해라. 11턴 이후 내 병력이 적 수비대의 1.3배 이상이면 반드시 공격해라. 병력이 적으면 RECRUIT 우선.',
     personality: '신중한 재상',
   },
   {
     id: 'agent_2',
     name: '황금국',
     color: '#fbbf24',
-    strategy: '경제와 군사를 균형있게 발전시켜라. 가장 약한 적부터 처리해라.',
+    strategy: '빈 타일을 먼저 점령하고, 내 병력이 적 수비대의 1.5배 이상이면 공격해라. 가장 병력이 적은 적을 우선 공격 대상으로 삼아라.',
     personality: '균형잡힌 군주',
   },
   {
     id: 'agent_3',
     name: '흑산국',
     color: '#8b5cf6',
-    strategy: '직접 전투를 최소화해라. 다른 세력이 싸우는 동안 영토를 조용히 확장해라.',
+    strategy: '빈 타일 점령을 최우선으로 해라. 내 병력이 적 수비대의 2배 이상일 때만 공격해라. 다른 세력이 약해지면 바로 공격 기회를 노려라.',
     personality: '교활한 책사',
   },
 ];
@@ -193,7 +193,7 @@ function executeAction(
       const defender = state.agents.find((a) => a.id === tile.owner);
       if (!defender || !defender.alive) return;
 
-      const attackerTroops = Math.min(agent.troops, Math.ceil(agent.troops * 0.4));
+      const attackerTroops = Math.min(agent.troops, Math.ceil(agent.troops * 0.7));
       const result = resolveBattle(attackerTroops, tile.garrison, tile.terrain);
 
       if (result.winner === 'attacker') {
