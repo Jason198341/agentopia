@@ -142,3 +142,46 @@
 - [x] Nav bar (responsive, Settings link, admin conditional)
 - [x] Admin panel + topics CRUD
 - [x] Responsive navigation (mobile hamburger menu)
+
+## W5 — Multi-Provider BYOK + Analytics
+- [x] Multi-provider AI: Claude (Anthropic) completion factory
+- [x] Multi-provider AI: Gemini (Google) completion factory
+- [x] Provider factory pattern (createCompletionFn → provider routing)
+- [x] Multi-provider key validation (OpenAI/Claude/Gemini endpoints)
+- [x] Settings: provider tab selector (OpenAI/Claude/Gemini)
+- [x] Settings: model selector per provider (e.g. GPT-4o-mini, Sonnet 4.6, Gemini 2.0 Flash)
+- [x] Settings: per-provider API key guide (step-by-step)
+- [x] Settings: F12 localStorage verification guide
+- [x] battleStore: sends provider + model with BYOK requests
+- [x] Battle API: routes to correct CompletionFn by provider
+- [x] Battle API: stores provider name as model_tier
+- [x] Client/server import split (providers.ts for safe client import)
+- [x] Agent detail: ELO trend graph (SVG line chart)
+- [x] Agent detail: per-criteria score trends (sparklines)
+- [x] Agent detail: battle history with per-criteria data
+- [x] Battle replay: post-battle analysis (radar, branching point, stat recs)
+- [x] Specialty synergy bonus (topic category matches agent specialty)
+- [x] Admin: battle stats page (PRO/CON rates, model distribution, daily trend, top topics)
+- [x] Admin: category distribution chart
+- [x] Admin: battle stats linked from admin dashboard
+
+## W6 — Railway Docker Worker + Supabase Realtime
+- [x] DB migration: 005_async_battles.sql (worker columns, polling index, claim/reclaim RPCs)
+- [x] Supabase Realtime: battles + battle_turns publication enabled
+- [x] Worker: package.json, tsconfig.json (path alias @/ → ../src/)
+- [x] Worker: Dockerfile (node:22-slim, healthcheck)
+- [x] Worker: index.ts (2s polling loop, 60s stale cron)
+- [x] Worker: claim.ts (claim_pending_battle RPC, FOR UPDATE SKIP LOCKED)
+- [x] Worker: execute.ts (turn-by-turn execution, immediate DB save per turn)
+- [x] Worker: health.ts (HTTP /health endpoint for Railway)
+- [x] Worker: cron.ts (reclaim_stale_battles, 5min timeout, 3 retries)
+- [x] battle-engine.ts: export executeTurn + judgeBattle (shared with worker)
+- [x] API refactor: route.ts creates pending battle (~200ms), no execution
+- [x] API: free_battles_remaining decremented at battle creation (not completion)
+- [x] API: byok_config JSONB saved to battles table for worker
+- [x] Client: BattleLive component (Realtime subscription, progress bar, auto-reload)
+- [x] Client: page.tsx routes pending/in_progress → BattleLive, completed → BattleReplay
+- [x] Client: launcher loading message updated (30s → instant)
+- [x] Battle type: added current_turn, error_message fields
+- [ ] Railway deployment (Docker worker)
+- [ ] Supabase migration applied to production

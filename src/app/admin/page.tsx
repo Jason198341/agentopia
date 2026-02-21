@@ -73,13 +73,16 @@ export default async function AdminPage() {
             </div>
             <span className="text-text-muted">&rarr;</span>
           </a>
-          <div className="flex items-center justify-between rounded-xl border border-border bg-surface/50 p-4 opacity-50">
+          <a
+            href="/admin/battles"
+            className="flex items-center justify-between rounded-xl border border-border bg-surface p-4 transition hover:bg-surface-hover"
+          >
             <div>
-              <p className="font-medium text-text-muted">배틀 통계</p>
-              <p className="text-sm text-text-muted">주제별 PRO/CON 승률 · 시간대별 빈도</p>
+              <p className="font-medium text-text">배틀 통계</p>
+              <p className="text-sm text-text-muted">주제별 PRO/CON 승률 · 모델 분포 · 일별 트렌드</p>
             </div>
-            <span className="text-xs text-text-muted">준비 중</span>
-          </div>
+            <span className="text-text-muted">&rarr;</span>
+          </a>
           <div className="flex items-center justify-between rounded-xl border border-border bg-surface/50 p-4 opacity-50">
             <div>
               <p className="font-medium text-text-muted">유저 관리</p>

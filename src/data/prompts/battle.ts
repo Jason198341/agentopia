@@ -92,10 +92,16 @@ const TURN_INSTRUCTIONS: Record<TurnType, string> = {
     "This is your CLOSING STATEMENT. Summarize why your position is stronger. End with a compelling final point.",
 };
 
-function specialtyLine(specialties: Specialty[]): string {
+function specialtyLine(specialties: Specialty[], topicCategory?: string): string {
   if (specialties.length === 0) return "";
   const names = specialties.join(", ");
-  return `\nYou have deep expertise in: ${names}. Draw on this knowledge when relevant to the topic.`;
+  const base = `\nYou have deep expertise in: ${names}. Draw on this knowledge when relevant to the topic.`;
+
+  // Synergy bonus: if topic category matches a specialty, agent gets a boost
+  if (topicCategory && specialties.includes(topicCategory as Specialty)) {
+    return base + `\n**SPECIALTY SYNERGY ACTIVATED**: This topic falls directly within your domain of expertise (${topicCategory}). You have a significant knowledge advantage. Use advanced concepts, specific examples, and domain-specific terminology to demonstrate your authority. Be more confident and authoritative than usual.`;
+  }
+  return base;
 }
 
 export function buildAgentSystemPrompt(
@@ -104,6 +110,7 @@ export function buildAgentSystemPrompt(
   topic: string,
   turnType: TurnType,
   opponentLastMessage?: string,
+  topicCategory?: string,
 ): string {
   const side = role === "pro" ? "IN FAVOR OF" : "AGAINST";
   const stats = agent.stats;
@@ -145,7 +152,7 @@ export function buildAgentSystemPrompt(
     STAT_PROMPTS.creativity[tier(stats.creativity)],
     STAT_PROMPTS.knowledge[tier(stats.knowledge)],
     STAT_PROMPTS.adaptability[tier(stats.adaptability)],
-    specialtyLine(agent.specialties),
+    specialtyLine(agent.specialties, topicCategory),
     ...(personalityLines.length > 0
       ? ["", "Your speaking approach and strategy:", ...personalityLines]
       : []),

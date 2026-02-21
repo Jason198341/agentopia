@@ -1,6 +1,13 @@
 import { create } from "zustand";
+import type { Provider } from "@/lib/providers";
 
-const API_KEY_STORAGE = "agentopia_openai_key";
+const STORAGE_KEYS: Record<Provider, string> = {
+  openai: "agentopia_openai_key",
+  claude: "agentopia_claude_key",
+  gemini: "agentopia_gemini_key",
+};
+const PROVIDER_STORAGE = "agentopia_provider";
+const MODEL_STORAGE = "agentopia_model";
 
 interface BattleState {
   loading: boolean;
@@ -9,6 +16,35 @@ interface BattleState {
 
   startBattle: (agentId: string) => Promise<string | null>;
   reset: () => void;
+}
+
+/** Read the active BYOK config from localStorage */
+function getByokConfig(): { api_key: string; provider: Provider; model: string } | null {
+  if (typeof window === "undefined") return null;
+
+  const provider = (localStorage.getItem(PROVIDER_STORAGE) || "openai") as Provider;
+  const key = localStorage.getItem(STORAGE_KEYS[provider]);
+  if (!key) {
+    // Fallback: check all providers for any saved key
+    for (const p of ["openai", "claude", "gemini"] as Provider[]) {
+      const k = localStorage.getItem(STORAGE_KEYS[p]);
+      if (k) {
+        const model = localStorage.getItem(MODEL_STORAGE) || "";
+        return { api_key: k, provider: p, model };
+      }
+    }
+    return null;
+  }
+
+  const model = localStorage.getItem(MODEL_STORAGE) || "";
+  return { api_key: key, provider, model };
+}
+
+export function hasAnyApiKey(): boolean {
+  if (typeof window === "undefined") return false;
+  return (["openai", "claude", "gemini"] as Provider[]).some(
+    (p) => !!localStorage.getItem(STORAGE_KEYS[p]),
+  );
 }
 
 export const useBattleStore = create<BattleState>((set) => ({
@@ -20,13 +56,13 @@ export const useBattleStore = create<BattleState>((set) => ({
     set({ loading: true, error: null, currentBattleId: null });
 
     try {
-      // Include BYOK key if available
-      const apiKey = typeof window !== "undefined"
-        ? localStorage.getItem(API_KEY_STORAGE)
-        : null;
-
+      const byok = getByokConfig();
       const payload: Record<string, string> = { agent_id: agentId };
-      if (apiKey) payload.api_key = apiKey;
+      if (byok) {
+        payload.api_key = byok.api_key;
+        payload.provider = byok.provider;
+        if (byok.model) payload.model = byok.model;
+      }
 
       const res = await fetch("/api/battles", {
         method: "POST",

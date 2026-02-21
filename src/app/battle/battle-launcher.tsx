@@ -1,10 +1,8 @@
 "use client";
 
-import { useBattleStore } from "@/stores/battleStore";
+import { useBattleStore, hasAnyApiKey } from "@/stores/battleStore";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-
-const API_KEY_STORAGE = "agentopia_openai_key";
 
 interface AgentSummary {
   id: string;
@@ -21,7 +19,7 @@ export function BattleLauncher({ agents, freeBattles }: { agents: AgentSummary[]
   const [hasApiKey, setHasApiKey] = useState(false);
 
   useEffect(() => {
-    setHasApiKey(!!localStorage.getItem(API_KEY_STORAGE));
+    setHasApiKey(hasAnyApiKey());
   }, []);
 
   const isExhausted = freeBattles <= 0;
@@ -114,12 +112,12 @@ export function BattleLauncher({ agents, freeBattles }: { agents: AgentSummary[]
         {loading ? (
           <>
             <LoadingSpinner />
-            <span>{isExhausted ? "OpenAI로 토론 중..." : "상대 탐색 & 토론 중..."}</span>
+            <span>매치 생성 중...</span>
           </>
         ) : !canBattle ? (
           "무료 배틀 소진 — API 키 등록 필요"
         ) : isExhausted && hasApiKey ? (
-          "배틀 시작 (API 키)"
+          "배틀 시작 (BYOK)"
         ) : (
           "배틀 시작"
         )}
@@ -127,7 +125,7 @@ export function BattleLauncher({ agents, freeBattles }: { agents: AgentSummary[]
 
       {loading && (
         <p className="mt-3 text-center text-sm text-text-muted">
-          약 30초 소요됩니다. 에이전트가 지금 토론 중입니다...
+          매치를 찾고 있습니다...
         </p>
       )}
     </div>

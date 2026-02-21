@@ -1,11 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dbToAgent } from "@/types/agent";
-import { TURN_SEQUENCE } from "@/types/battle";
 import { pickTopicFromDb } from "@/data/topics";
-import { runFullBattle } from "@/lib/battle-engine";
-import { checkNewBadges } from "@/types/badge";
-import { createOpenAICompletion } from "@/lib/ai";
+import type { Provider } from "@/lib/ai";
 import { NextResponse } from "next/server";
 
 // NPC system user ID — matches the seed script
@@ -25,7 +22,12 @@ export async function POST(request: Request) {
 
   // 2. Parse request (before quota check — need api_key for BYOK)
   const body = await request.json();
-  const { agent_id, api_key } = body;
+  const { agent_id, api_key, provider, model } = body as {
+    agent_id?: string;
+    api_key?: string;
+    provider?: Provider;
+    model?: string;
+  };
 
   // 3. Check free battle quota — BYOK bypasses when exhausted
   const { data: profile } = await supabase
@@ -35,7 +37,7 @@ export async function POST(request: Request) {
     .single();
 
   const remaining = profile?.free_battles_remaining ?? 0;
-  const isByok = remaining <= 0 && typeof api_key === "string" && api_key.startsWith("sk-");
+  const isByok = remaining <= 0 && typeof api_key === "string" && api_key.length >= 10;
 
   if (remaining <= 0 && !isByok) {
     return NextResponse.json(
@@ -47,7 +49,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "agent_id required" }, { status: 400 });
   }
 
-  // 3. Fetch user's agent
+  // 4. Fetch user's agent
   const { data: agentRow, error: agentErr } = await supabase
     .from("agents")
     .select("*")
@@ -60,13 +62,13 @@ export async function POST(request: Request) {
   }
   const playerAgent = dbToAgent(agentRow);
 
-  // 4. Find opponent — try PvP first, then NPC fallback
-  // Step A: Look for real player agents within ELO ±200 (exclude same owner)
+  // 5. Find opponent — try PvP first, then NPC fallback
+  // Step A: Real player agents within ELO ±200
   let { data: pvpCandidates } = await admin
     .from("agents")
     .select("*")
-    .neq("owner_id", user.id) // not same owner
-    .neq("owner_id", NPC_OWNER_ID) // not NPC
+    .neq("owner_id", user.id)
+    .neq("owner_id", NPC_OWNER_ID)
     .eq("is_active", true)
     .gte("elo", playerAgent.elo - 200)
     .lte("elo", playerAgent.elo + 200)
@@ -74,7 +76,7 @@ export async function POST(request: Request) {
 
   let opponents = pvpCandidates && pvpCandidates.length > 0 ? pvpCandidates : null;
 
-  // Step B: Fallback to NPC agents (ELO ±200)
+  // Step B: NPC agents (ELO ±200)
   if (!opponents) {
     const { data: npcClose } = await admin
       .from("agents")
@@ -86,7 +88,7 @@ export async function POST(request: Request) {
     opponents = npcClose && npcClose.length > 0 ? npcClose : null;
   }
 
-  // Step C: Fallback to any NPC
+  // Step C: Any NPC
   if (!opponents) {
     const { data: npcAny } = await admin
       .from("agents")
@@ -103,20 +105,25 @@ export async function POST(request: Request) {
     );
   }
 
-  // Pick random opponent from candidates
+  // Pick random opponent
   const opponentRow = opponents[Math.floor(Math.random() * opponents.length)];
   const opponentAgent = dbToAgent(opponentRow);
 
-  // 5. Random PRO/CON assignment — agent_a is always PRO
+  // 6. Random PRO/CON assignment — agent_a is always PRO
   const playerIsPro = Math.random() < 0.5;
-  const agentA = playerIsPro ? playerAgent : opponentAgent; // PRO
-  const agentB = playerIsPro ? opponentAgent : playerAgent; // CON
+  const agentA = playerIsPro ? playerAgent : opponentAgent;
+  const agentB = playerIsPro ? opponentAgent : playerAgent;
 
-  // 6. Pick topic from DB (ELO-based difficulty), fallback to hardcoded
+  // 7. Pick topic from DB (ELO-based difficulty)
   const avgElo = Math.round((playerAgent.elo + opponentAgent.elo) / 2);
-  const { topic, category, topicId } = await pickTopicFromDb(admin, avgElo);
+  const { topic, category } = await pickTopicFromDb(admin, avgElo);
 
-  // 7. Create battle record (pending)
+  // 8. Build BYOK config for worker (if applicable)
+  const byokConfig = isByok
+    ? { provider: provider || "openai", api_key: api_key!, model: model || "" }
+    : null;
+
+  // 9. Create battle record as PENDING (worker will pick it up)
   const { data: battle, error: battleErr } = await admin
     .from("battles")
     .insert({
@@ -124,8 +131,9 @@ export async function POST(request: Request) {
       agent_b_id: agentB.id,
       topic,
       topic_category: category,
-      status: "in_progress",
-      model_tier: isByok ? "premium" : "free",
+      status: "pending",
+      model_tier: isByok ? (provider || "openai") : "free",
+      byok_config: byokConfig,
     })
     .select("id")
     .single();
@@ -137,215 +145,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const battleId = battle.id;
-
-  try {
-    // 8. Run the full battle engine (BYOK uses OpenAI, free uses Fireworks)
-    const completionFn = isByok ? createOpenAICompletion(api_key) : undefined;
-    const result = await runFullBattle(agentA, agentB, topic, completionFn);
-
-    // 9. Persist turns
-    const turnInserts = result.turns.flatMap((turn, i) => {
-      const seq = TURN_SEQUENCE[i];
-      return [
-        {
-          battle_id: battleId,
-          turn_number: seq.turn,
-          agent_id: agentA.id,
-          role: "pro",
-          content: turn.pro.content,
-          turn_type: seq.type,
-          tokens_used: turn.pro.tokens,
-        },
-        {
-          battle_id: battleId,
-          turn_number: seq.turn,
-          agent_id: agentB.id,
-          role: "con",
-          content: turn.con.content,
-          turn_type: seq.type,
-          tokens_used: turn.con.tokens,
-        },
-      ];
-    });
-
-    await admin.from("battle_turns").insert(turnInserts);
-
-    // 10. Update battle with results
+  // 10. Decrement free battle counter immediately (skip for BYOK)
+  const newRemaining = isByok ? remaining : Math.max(0, remaining - 1);
+  if (!isByok) {
     await admin
-      .from("battles")
-      .update({
-        status: "completed",
-        winner_id: result.winner_id,
-        score_a: result.judgeResult.score_a,
-        score_b: result.judgeResult.score_b,
-        elo_change_a: result.elo_change_a,
-        elo_change_b: result.elo_change_b,
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", battleId);
-
-    // 11. Update agent ELOs and W/L records
-    const winnerIsA = result.winner_id === agentA.id;
-    const winnerIsB = result.winner_id === agentB.id;
-
-    await admin
-      .from("agents")
-      .update({
-        elo: agentA.elo + result.elo_change_a,
-        wins: agentA.wins + (winnerIsA ? 1 : 0),
-        losses: agentA.losses + (winnerIsB ? 1 : 0),
-      })
-      .eq("id", agentA.id);
-
-    await admin
-      .from("agents")
-      .update({
-        elo: agentB.elo + result.elo_change_b,
-        wins: agentB.wins + (winnerIsB ? 1 : 0),
-        losses: agentB.losses + (winnerIsA ? 1 : 0),
-      })
-      .eq("id", agentB.id);
-
-    // 12. Update topic stats (pro_wins / con_wins)
-    if (topicId && result.winner_id) {
-      const winnerIsPro = result.winner_id === agentA.id;
-      const field = winnerIsPro ? "pro_wins" : "con_wins";
-      const { data: topicRow } = await admin.from("topics").select(field).eq("id", topicId).single();
-      if (topicRow) {
-        await admin.from("topics").update({ [field]: (topicRow as Record<string, number>)[field] + 1 }).eq("id", topicId);
-      }
-    }
-
-    // 13. Record ELO history (renumbered after topic stats)
-    await admin.from("elo_history").insert([
-      {
-        agent_id: agentA.id,
-        battle_id: battleId,
-        elo_before: agentA.elo,
-        elo_after: agentA.elo + result.elo_change_a,
-        change: result.elo_change_a,
-      },
-      {
-        agent_id: agentB.id,
-        battle_id: battleId,
-        elo_before: agentB.elo,
-        elo_after: agentB.elo + result.elo_change_b,
-        change: result.elo_change_b,
-      },
-    ]);
-
-    // 14. Award badges for the player's agent
-    const playerIsA = agentA.id === playerAgent.id;
-    const playerWon = result.winner_id === playerAgent.id;
-    const playerScoreTotal = playerIsA
-      ? result.judgeResult.score_a.total
-      : result.judgeResult.score_b.total;
-    const opponentScoreTotal = playerIsA
-      ? result.judgeResult.score_b.total
-      : result.judgeResult.score_a.total;
-
-    // Fetch recent battle results for streak calculation
-    const { data: recentBattles } = await admin
-      .from("battles")
-      .select("winner_id, agent_a_id, agent_b_id")
-      .or(`agent_a_id.eq.${playerAgent.id},agent_b_id.eq.${playerAgent.id}`)
-      .eq("status", "completed")
-      .order("completed_at", { ascending: false })
-      .limit(15);
-
-    const recentResults: ("win" | "loss")[] = (recentBattles ?? []).map((b) =>
-      b.winner_id === playerAgent.id ? "win" : "loss",
-    );
-
-    const existingBadges: string[] = (playerAgent.traits._badges as unknown as string[]) ?? [];
-    const newBadges = checkNewBadges(existingBadges, {
-      won: playerWon,
-      totalWins: playerAgent.wins + (playerWon ? 1 : 0),
-      totalBattles: playerAgent.wins + playerAgent.losses + 1,
-      winMargin: playerScoreTotal - opponentScoreTotal,
-      opponentElo: opponentAgent.elo,
-      agentElo: playerAgent.elo,
-      recentResults,
-    });
-
-    // 15. Auto-trait evolution (P015)
-    const totalBattles = playerAgent.wins + playerAgent.losses + 1;
-    const currentTraits = { ...playerAgent.traits };
-    const streak = countStreak(recentResults);
-
-    // 5 win streak → "Confidence" trait (+1 boldness flavor)
-    if (streak >= 5 && !currentTraits["Confidence"]) {
-      currentTraits["Confidence"] = 1;
-    }
-    // 3 loss streak → "Caution" trait (defensive adaptation)
-    const lossStreak = countLossStreak(recentResults);
-    if (lossStreak >= 3 && !currentTraits["Caution"]) {
-      currentTraits["Caution"] = 1;
-    }
-    // Comeback win (win after 3+ losses) → "Grit"
-    if (playerWon && recentResults.length >= 2 && recentResults[1] === "loss" && !currentTraits["Grit"]) {
-      const prevLosses = recentResults.slice(1).findIndex((r) => r === "win");
-      if (prevLosses >= 2) currentTraits["Grit"] = 1;
-    }
-    // Beat opponent 200+ ELO higher → "Giant Slayer" trait
-    if (playerWon && opponentAgent.elo - playerAgent.elo >= 200 && !currentTraits["Giant Slayer"]) {
-      currentTraits["Giant Slayer"] = 1;
-    }
-    // 10+ battles → experience marker
-    if (totalBattles >= 10 && !currentTraits["Experienced"]) {
-      currentTraits["Experienced"] = 1;
-    }
-
-    // Merge badges into traits
-    const updatedBadges = [...existingBadges, ...newBadges];
-    if (newBadges.length > 0 || JSON.stringify(currentTraits) !== JSON.stringify(playerAgent.traits)) {
-      currentTraits._badges = updatedBadges as unknown as number;
-      await admin
-        .from("agents")
-        .update({ traits: currentTraits })
-        .eq("id", playerAgent.id);
-    }
-
-    // 16. Decrement free battle counter (skip for BYOK)
-    const newRemaining = isByok ? remaining : Math.max(0, remaining - 1);
-    if (!isByok) {
-      await admin
-        .from("profiles")
-        .update({ free_battles_remaining: newRemaining })
-        .eq("id", user.id);
-    }
-
-    return NextResponse.json({ battle_id: battleId, free_battles_remaining: newRemaining });
-  } catch (err) {
-    // Mark battle as aborted on error
-    await admin
-      .from("battles")
-      .update({ status: "aborted" })
-      .eq("id", battleId);
-
-    console.error("Battle engine error:", err);
-    return NextResponse.json(
-      { error: "Battle execution failed. Please try again." },
-      { status: 500 },
-    );
+      .from("profiles")
+      .update({ free_battles_remaining: newRemaining })
+      .eq("id", user.id);
   }
-}
 
-function countStreak(results: ("win" | "loss")[]): number {
-  let streak = 0;
-  for (const r of results) {
-    if (r === "win") streak++;
-    else break;
-  }
-  return streak;
-}
-
-function countLossStreak(results: ("win" | "loss")[]): number {
-  let streak = 0;
-  for (const r of results) {
-    if (r === "loss") streak++;
-    else break;
-  }
-  return streak;
+  // Return immediately (~200ms) — worker handles execution
+  return NextResponse.json({
+    battle_id: battle.id,
+    free_battles_remaining: newRemaining,
+  });
 }

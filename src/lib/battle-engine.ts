@@ -31,7 +31,7 @@ interface FullBattleResult {
 
 // ─── Execute a Single Turn ───
 
-async function executeTurn(
+export async function executeTurn(
   agentPro: Agent,
   agentCon: Agent,
   topic: string,
@@ -39,6 +39,7 @@ async function executeTurn(
   previousProMessage?: string,
   previousConMessage?: string,
   complete: CompletionFn = fireworksCompletion,
+  topicCategory?: string,
 ): Promise<TurnResult> {
   // PRO goes first
   const proResult = await complete({
@@ -48,6 +49,7 @@ async function executeTurn(
       topic,
       turnType,
       previousConMessage,
+      topicCategory,
     ),
     userPrompt: "Present your argument now.",
     maxTokens: 500,
@@ -62,6 +64,7 @@ async function executeTurn(
       topic,
       turnType,
       turnType === "opening" ? previousProMessage : proResult.content,
+      topicCategory,
     ),
     userPrompt: "Present your argument now.",
     maxTokens: 500,
@@ -76,7 +79,7 @@ async function executeTurn(
 
 // ─── Judge the Battle ───
 
-async function judgeBattle(
+export async function judgeBattle(
   topic: string,
   agentA: Agent,
   agentB: Agent,
@@ -169,6 +172,7 @@ export async function runFullBattle(
   agentB: Agent, // CON
   topic: string,
   completionFn?: CompletionFn,
+  topicCategory?: string,
 ): Promise<FullBattleResult> {
   const complete = completionFn ?? fireworksCompletion;
   const turns: TurnResult[] = [];
@@ -185,6 +189,7 @@ export async function runFullBattle(
       prevTurn?.pro.content,
       prevTurn?.con.content,
       complete,
+      topicCategory,
     );
     turns.push(result);
   }

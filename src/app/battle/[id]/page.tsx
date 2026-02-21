@@ -3,6 +3,7 @@ import { dbToAgent } from "@/types/agent";
 import { dbToBattle, dbToBattleTurn } from "@/types/battle";
 import { redirect } from "next/navigation";
 import { BattleReplay } from "./battle-replay";
+import { BattleLive } from "./battle-live";
 
 export default async function BattleDetailPage({
   params,
@@ -40,13 +41,13 @@ export default async function BattleDetailPage({
 
   const battle = dbToBattle(battleRow);
 
-  // Fetch turns
+  // Fetch turns (may be partial if battle is still in progress)
   const { data: turnRows } = await supabase
     .from("battle_turns")
     .select("*")
     .eq("battle_id", id)
     .order("turn_number", { ascending: true })
-    .order("role", { ascending: true }); // pro before con
+    .order("role", { ascending: true });
 
   const turns = (turnRows ?? []).map(dbToBattleTurn);
 
@@ -67,16 +68,29 @@ export default async function BattleDetailPage({
   const agentA = dbToAgent(agentARow);
   const agentB = dbToAgent(agentBRow);
 
+  // Route: pending/in_progress → BattleLive, completed/aborted → BattleReplay
+  const isLive = battle.status === "pending" || battle.status === "in_progress";
+
   return (
     <div className="min-h-screen bg-bg px-4 py-8">
       <div className="mx-auto max-w-3xl">
-        <BattleReplay
-          battle={battle}
-          turns={turns}
-          agentA={agentA}
-          agentB={agentB}
-          userId={user.id}
-        />
+        {isLive ? (
+          <BattleLive
+            battle={battle}
+            agentA={agentA}
+            agentB={agentB}
+            userId={user.id}
+            initialTurns={turns}
+          />
+        ) : (
+          <BattleReplay
+            battle={battle}
+            turns={turns}
+            agentA={agentA}
+            agentB={agentB}
+            userId={user.id}
+          />
+        )}
       </div>
     </div>
   );

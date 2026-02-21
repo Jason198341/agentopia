@@ -35,7 +35,9 @@ export interface Battle {
   spectator_votes_b: number;
   elo_change_a: number;
   elo_change_b: number;
-  model_tier: "free" | "premium";
+  model_tier: string; // "free" | "openai" | "claude" | "gemini"
+  current_turn: number;
+  error_message: string;
   created_at: string;
   completed_at: string | null;
 }
@@ -84,7 +86,9 @@ export function dbToBattle(row: Record<string, unknown>): Battle {
     spectator_votes_b: (row.spectator_votes_b as number) ?? 0,
     elo_change_a: (row.elo_change_a as number) ?? 0,
     elo_change_b: (row.elo_change_b as number) ?? 0,
-    model_tier: (row.model_tier as Battle["model_tier"]) ?? "free",
+    model_tier: (row.model_tier as string) ?? "free",
+    current_turn: (row.current_turn as number) ?? 0,
+    error_message: (row.error_message as string) ?? "",
     created_at: row.created_at as string,
     completed_at: (row.completed_at as string) ?? null,
   };
