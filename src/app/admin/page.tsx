@@ -83,6 +83,16 @@ export default async function AdminPage() {
             </div>
             <span className="text-text-muted">&rarr;</span>
           </a>
+          <a
+            href="/admin/counseling"
+            className="flex items-center justify-between rounded-xl border border-border bg-surface p-4 transition hover:bg-surface-hover"
+          >
+            <div>
+              <p className="font-medium text-text">상담 NPC 관리</p>
+              <p className="text-sm text-text-muted">NPC 미응답 글 확인 · 일괄 자동 응답 생성</p>
+            </div>
+            <span className="text-text-muted">&rarr;</span>
+          </a>
           <div className="flex items-center justify-between rounded-xl border border-border bg-surface/50 p-4 opacity-50">
             <div>
               <p className="font-medium text-text-muted">유저 관리</p>
