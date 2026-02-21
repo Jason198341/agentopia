@@ -10,7 +10,7 @@ export function createAdminClient() {
     throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY — check .env.local");
   }
 
-  return createClient(url, serviceKey, {
+  return createClient(url.trim(), serviceKey.trim(), {
     auth: { persistSession: false },
   });
 }
