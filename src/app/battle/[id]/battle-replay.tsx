@@ -1,7 +1,8 @@
 "use client";
 
-import type { Agent, AgentStats, TurnStrategies } from "@/types/agent";
-import { STAT_LABELS, getTurnStrategies, TURN_LABELS as STRATEGY_TURN_LABELS } from "@/types/agent";
+import type { Agent, TurnStrategies } from "@/types/agent";
+import { getTurnStrategies, TURN_LABELS as STRATEGY_TURN_LABELS, getPersonality } from "@/types/agent";
+import { useAgentStore } from "@/stores/agentStore";
 import type { Battle, BattleTurn, BattleScore } from "@/types/battle";
 import { TURN_SEQUENCE } from "@/types/battle";
 import { DEBATE_TOPICS, type TopicDifficulty } from "@/data/topics";
@@ -318,32 +319,18 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
 
 // ─── Post-Battle Analysis Report ───
 
-// Map judge criteria to agent stats that could improve them
-const CRITERIA_STAT_MAP: Record<string, { stats: (keyof AgentStats)[]; tip: string }> = {
-  logic: {
-    stats: ["logic", "knowledge"],
-    tip: "논리와 지식 스탯을 올리면 논증 구조가 탄탄해집니다.",
-  },
-  rebuttal: {
-    stats: ["aggression", "logic", "adaptability"],
-    tip: "공격(약점 공략), 논리(정밀 반격), 적응(동적 대응)이 반박력을 높입니다.",
-  },
-  consistency: {
-    stats: ["logic", "knowledge"],
-    tip: "논리(구조적 사고)와 지식(사실 근거)을 높이면 일관성이 강화됩니다.",
-  },
-  persuasion: {
-    stats: ["boldness", "creativity", "humor"],
-    tip: "대담(강한 입장), 창의(새로운 관점), 유머(청중 몰입)가 설득력을 만듭니다.",
-  },
-  expression: {
-    stats: ["brevity", "humor", "creativity"],
-    tip: "간결(핵심 전달), 유머(매력적 톤), 창의(생생한 표현)가 표현력을 높입니다.",
-  },
-  factual: {
-    stats: ["knowledge", "logic"],
-    tip: "지식(전문성과 정밀도)과 논리(근거 기반 추론)가 사실 정확성의 핵심입니다.",
-  },
+// Strategy-focused tips per criteria (no stat references)
+const CRITERIA_TIPS: Record<string, string> = {
+  logic: "논증 구조를 명확히 하세요. 주장 → 근거 → 결론 순서로 정리하고, 반박 불가능한 논리 흐름을 만드세요.",
+  rebuttal: "상대 주장의 핵심 약점을 정확히 짚어 반격하세요. 감정적 반응 대신 논리적 허점 공략이 효과적입니다.",
+  consistency: "모든 턴에서 일관된 입장을 유지하세요. 주제에서 벗어나거나 입장이 흔들리면 크게 감점됩니다.",
+  persuasion: "강한 입장 표명과 창의적 관점으로 설득하세요. 단순 주장보다 구체적 사례나 스토리가 효과적입니다.",
+  expression: "핵심을 간결하게 전달하세요. 너무 길거나 장황한 표현은 설득력을 오히려 떨어뜨립니다.",
+  factual: "구체적인 수치나 사례를 활용하세요. 막연한 주장보다 검증 가능한 근거가 신뢰도를 높입니다.",
+};
+
+const TURN_KEY_MAP: Record<number, keyof TurnStrategies> = {
+  1: "turn_1", 2: "turn_2", 3: "turn_3", 4: "turn_4", 5: "turn_5",
 };
 
 function BattleAnalysis({
@@ -361,7 +348,14 @@ function BattleAnalysis({
   userAgent: Agent;
   isUserA: boolean;
 }) {
+  const { updateAgent } = useAgentStore();
   const [expanded, setExpanded] = useState(false);
+  const [editStrategies, setEditStrategies] = useState<TurnStrategies>(
+    () => getTurnStrategies(userAgent) ?? { turn_1: "", turn_2: "", turn_3: "", turn_4: "", turn_5: "" },
+  );
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
   const myScore = isUserA ? battle.score_a : battle.score_b;
   const theirScore = isUserA ? battle.score_b : battle.score_a;
   const won = battle.winner_id === userAgent.id;
@@ -379,7 +373,7 @@ function BattleAnalysis({
   const sortedWeaknesses = [...criteriaGaps].sort((a, b) => b.gap - a.gap);
   const worstCriteria = sortedWeaknesses[0];
 
-  // Find branching point — turn where user's argument was weakest (heuristic: shortest response in losing battle)
+  // Find branching point (turn with worst length ratio)
   const myTurns = turnPairs.map((p) => {
     const myMsg = isUserA ? p.pro : p.con;
     const theirMsg = isUserA ? p.con : p.pro;
@@ -391,25 +385,22 @@ function BattleAnalysis({
       ratio: (myMsg?.content.length ?? 0) / Math.max(theirMsg?.content.length ?? 1, 1),
     };
   });
-  // Branching point: turn with worst length ratio (simplified heuristic for "where you fell behind")
   const branchingTurn = [...myTurns].sort((a, b) => a.ratio - b.ratio)[0];
 
-  // Stat recommendations based on weak criteria
-  const recommendations: { stat: keyof AgentStats; reason: string }[] = [];
-  const seenStats = new Set<string>();
-  for (const weakness of sortedWeaknesses.filter((w) => w.gap > 0)) {
-    const mapping = CRITERIA_STAT_MAP[weakness.key];
-    if (!mapping) continue;
-    for (const stat of mapping.stats) {
-      if (!seenStats.has(stat) && userAgent.stats[stat] < 7) {
-        seenStats.add(stat);
-        recommendations.push({
-          stat,
-          reason: `${CRITERIA.find((c) => c.key === weakness.key)?.label ?? weakness.key}: ${mapping.tip}`,
-        });
-      }
+  async function handleSaveStrategies() {
+    setSaving(true);
+    const ok = await updateAgent(userAgent.id, {
+      name: userAgent.name,
+      stats: userAgent.stats,
+      specialties: userAgent.specialties,
+      personality: getPersonality(userAgent),
+      turnStrategies: editStrategies,
+    });
+    setSaving(false);
+    if (ok) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
     }
-    if (recommendations.length >= 3) break;
   }
 
   return (
@@ -419,13 +410,15 @@ function BattleAnalysis({
         className="w-full rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-left transition hover:bg-accent/10"
       >
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-accent">
-            배틀 분석 리포트
-          </span>
+          <span className="text-sm font-semibold text-accent">배틀 분석 리포트</span>
           <span className="text-xs text-text-muted">{expanded ? "▲" : "▼"}</span>
         </div>
         <p className="mt-1 text-xs text-text-muted">
-          {won ? "잘한 점과 우위를 유지하는 방법을 확인하세요." : draw ? "교착 상태를 분석하고 돌파구를 찾아보세요." : "무엇이 잘못됐는지 파악하고 개선점을 확인하세요."}
+          {won
+            ? "잘한 점과 우위를 유지하는 방법을 확인하세요."
+            : draw
+              ? "교착 상태를 분석하고 돌파구를 찾아보세요."
+              : "무엇이 잘못됐는지 파악하고 전략을 바로 수정하세요."}
         </p>
       </button>
 
@@ -433,9 +426,7 @@ function BattleAnalysis({
         <div className="mt-3 space-y-4">
           {/* Radar Chart */}
           <div className="rounded-xl border border-border bg-surface p-4">
-            <h3 className="text-xs font-medium uppercase tracking-wider text-text-muted">
-              점수 레이더
-            </h3>
+            <h3 className="text-xs font-medium uppercase tracking-wider text-text-muted">점수 레이더</h3>
             <div className="mt-3 flex justify-center">
               <RadarChart myScore={myScore} theirScore={theirScore} />
             </div>
@@ -455,14 +446,12 @@ function BattleAnalysis({
           {!won && branchingTurn && (
             <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
               <h3 className="text-xs font-medium uppercase tracking-wider text-warning">
-                전환점 — {branchingTurn.turn}턴
+                전환점 — {branchingTurn.turn}턴 ({TURN_LABELS[branchingTurn.type]})
               </h3>
               <p className="mt-2 text-sm text-text">
-                <strong>{TURN_LABELS[branchingTurn.type]}</strong> 단계에서 승부가 갈린 것으로 보입니다. 당신의 에이전트 응답이 상대에 비해{" "}
-                {branchingTurn.ratio < 0.7 ? "현저히 짧아" : "다소 빈약해"} 더 강한 논증을 펼칠 기회를 놓친 것 같습니다.
-              </p>
-              <p className="mt-1 text-xs text-text-muted">
-                아깝다! 이 턴에서 조금만 더 강했으면 결과가 뒤집힐 수 있었습니다.
+                이 턴에서 상대에 비해 논증이{" "}
+                {branchingTurn.ratio < 0.7 ? "현저히 빈약했습니다." : "다소 부족했습니다."}
+                {" "}아래 전략 에디터에서 해당 턴을 강화해보세요.
               </p>
             </div>
           )}
@@ -478,47 +467,14 @@ function BattleAnalysis({
                 <strong>{worstCriteria.theirVal}</strong> ({worstCriteria.gap}점 차이).
               </p>
               <p className="mt-1 text-xs text-text-muted">
-                {CRITERIA_STAT_MAP[worstCriteria.key]?.tip}
+                {CRITERIA_TIPS[worstCriteria.key]}
               </p>
-            </div>
-          )}
-
-          {/* Stat Recommendations */}
-          {recommendations.length > 0 && (
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-              <h3 className="text-xs font-medium uppercase tracking-wider text-primary">
-                {won ? "우위 유지하기" : "추천 스탯 업그레이드"}
-              </h3>
-              <div className="mt-3 space-y-2">
-                {recommendations.map(({ stat, reason }) => {
-                  const label = STAT_LABELS[stat];
-                  return (
-                    <div key={stat} className="flex items-start gap-2">
-                      <span className="text-lg">{label.emoji}</span>
-                      <div>
-                        <p className="text-sm font-medium text-text">
-                          {label.ko}: {userAgent.stats[stat]} → {Math.min(userAgent.stats[stat] + 2, 10)}
-                        </p>
-                        <p className="text-xs text-text-muted">{reason}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <a
-                href={`/agents/${userAgent.id}/edit`}
-                className="mt-3 inline-block rounded-lg bg-primary px-4 py-1.5 text-xs font-medium text-white transition hover:bg-primary-hover"
-              >
-                스탯 수정하기
-              </a>
             </div>
           )}
 
           {/* Per-Turn Summary */}
           <div className="rounded-xl border border-border bg-surface p-4">
-            <h3 className="text-xs font-medium uppercase tracking-wider text-text-muted">
-              턴별 평가
-            </h3>
+            <h3 className="text-xs font-medium uppercase tracking-wider text-text-muted">턴별 평가</h3>
             <div className="mt-3 space-y-2">
               {turnPairs.map((pair) => {
                 const myMsg = isUserA ? pair.pro : pair.con;
@@ -552,6 +508,66 @@ function BattleAnalysis({
                 );
               })}
             </div>
+          </div>
+
+          {/* ── Inline Turn Strategy Editor ── */}
+          <div className="rounded-xl border border-accent/30 bg-accent/5 p-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-accent">
+                📝 전략 바로 수정
+              </h3>
+              <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-bold text-accent">
+                {userAgent.name}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-text-muted">
+              분석 결과를 바탕으로 전략을 수정하고 바로 저장하세요. ⚠ 표시 턴이 약점입니다.
+            </p>
+            <div className="mt-3 space-y-3">
+              {(Object.keys(STRATEGY_TURN_LABELS) as (keyof TurnStrategies)[]).map((key, idx) => {
+                const turnNum = idx + 1;
+                const isWeak = !!branchingTurn && TURN_KEY_MAP[branchingTurn.turn] === key;
+                const label = STRATEGY_TURN_LABELS[key];
+                return (
+                  <div key={key}>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-semibold ${isWeak ? "text-warning" : "text-text-muted"}`}>
+                        {label.ko}
+                      </span>
+                      {isWeak && (
+                        <span className="rounded bg-warning/20 px-1.5 py-0.5 text-[10px] font-bold text-warning">
+                          ⚠ 전환점
+                        </span>
+                      )}
+                    </div>
+                    <textarea
+                      rows={2}
+                      maxLength={200}
+                      value={editStrategies[key]}
+                      onChange={(e) =>
+                        setEditStrategies((prev) => ({ ...prev, [key]: e.target.value }))
+                      }
+                      className={`mt-1 block w-full rounded-lg border px-3 py-2 text-xs text-text placeholder-text-muted focus:outline-none focus:ring-1 ${
+                        isWeak
+                          ? "border-warning/40 bg-warning/5 focus:border-warning focus:ring-warning"
+                          : "border-border bg-bg focus:border-accent focus:ring-accent"
+                      }`}
+                      placeholder={`${label.ko}의 전략을 한국어로 작성하세요...`}
+                    />
+                    <p className="mt-0.5 text-right text-[10px] text-text-muted">
+                      {editStrategies[key].length}/200
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              onClick={handleSaveStrategies}
+              disabled={saving}
+              className="mt-3 w-full rounded-lg bg-accent py-2 text-sm font-semibold text-white transition hover:bg-accent/80 disabled:opacity-50"
+            >
+              {saving ? "저장 중..." : saved ? "✓ 저장됨!" : "전략 저장"}
+            </button>
           </div>
         </div>
       )}
