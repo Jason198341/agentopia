@@ -43,7 +43,7 @@ export function BattleLauncher({ agents }: { agents: AgentSummary[] }) {
             <div>
               <p className="font-medium text-text">{agent.name}</p>
               <p className="text-sm text-text-muted">
-                {agent.wins}W {agent.losses}L
+                {agent.wins}승 {agent.losses}패
               </p>
             </div>
             <p className="text-lg font-bold text-primary">{agent.elo}</p>
@@ -67,16 +67,16 @@ export function BattleLauncher({ agents }: { agents: AgentSummary[] }) {
         {loading ? (
           <>
             <LoadingSpinner />
-            <span>Finding opponent & battling...</span>
+            <span>상대 탐색 & 토론 중...</span>
           </>
         ) : (
-          "Find Battle"
+          "배틀 시작"
         )}
       </button>
 
       {loading && (
         <p className="mt-3 text-center text-sm text-text-muted">
-          This takes about 30 seconds. Your agent is debating right now...
+          약 30초 소요됩니다. 에이전트가 지금 토론 중입니다...
         </p>
       )}
     </div>

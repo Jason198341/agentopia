@@ -19,12 +19,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 function eloTier(elo: number) {
-  if (elo >= 2000) return { name: "Diamond", color: "text-cyan-300" };
-  if (elo >= 1600) return { name: "Platinum", color: "text-slate-300" };
-  if (elo >= 1300) return { name: "Gold", color: "text-yellow-400" };
-  if (elo >= 1100) return { name: "Silver", color: "text-gray-400" };
-  if (elo >= 900) return { name: "Bronze", color: "text-amber-600" };
-  return { name: "Iron", color: "text-stone-500" };
+  if (elo >= 2000) return { name: "다이아몬드", color: "text-cyan-300" };
+  if (elo >= 1600) return { name: "플래티넘", color: "text-slate-300" };
+  if (elo >= 1300) return { name: "골드", color: "text-yellow-400" };
+  if (elo >= 1100) return { name: "실버", color: "text-gray-400" };
+  if (elo >= 900) return { name: "브론즈", color: "text-amber-600" };
+  return { name: "아이언", color: "text-stone-500" };
 }
 
 type BattleHistoryItem = {
@@ -56,7 +56,7 @@ export function AgentDetail({
   const winRate = totalGames > 0 ? ((agent.wins / totalGames) * 100).toFixed(1) : "—";
 
   async function handleDelete() {
-    if (!confirm("Delete this agent? This cannot be undone.")) return;
+    if (!confirm("이 에이전트를 삭제하시겠습니까? 되돌릴 수 없습니다.")) return;
     setDeleting(true);
     await deleteAgent(agent.id);
     router.push("/dashboard");
@@ -66,7 +66,7 @@ export function AgentDetail({
     <div className="min-h-screen bg-bg px-4 py-8">
       <div className="mx-auto max-w-2xl">
         <a href="/dashboard" className="text-sm text-text-muted hover:text-text">
-          &larr; Dashboard
+          &larr; 대시보드
         </a>
 
         {/* Header */}
@@ -83,21 +83,21 @@ export function AgentDetail({
 
         {/* Record */}
         <div className="mt-6 grid grid-cols-3 gap-3">
-          <StatCard label="Wins" value={String(agent.wins)} color="text-success" />
-          <StatCard label="Losses" value={String(agent.losses)} color="text-danger" />
-          <StatCard label="Win Rate" value={`${winRate}%`} color="text-accent" />
+          <StatCard label="승" value={String(agent.wins)} color="text-success" />
+          <StatCard label="패" value={String(agent.losses)} color="text-danger" />
+          <StatCard label="승률" value={`${winRate}%`} color="text-accent" />
         </div>
 
         {/* Stats Radar */}
         <section className="mt-6">
           <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
-            Stats
+            스탯
           </h2>
           <div className="mt-3 space-y-2">
             {STAT_KEYS.map((key) => (
               <StatBar
                 key={key}
-                label={`${STAT_LABELS[key].emoji} ${STAT_LABELS[key].en}`}
+                label={`${STAT_LABELS[key].emoji} ${STAT_LABELS[key].ko}`}
                 value={agent.stats[key]}
               />
             ))}
@@ -107,7 +107,7 @@ export function AgentDetail({
         {/* Personality Profile — what the stats actually do */}
         <section className="mt-6">
           <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
-            Debate Personality
+            토론 성격
           </h2>
           <div className="mt-3 space-y-1.5">
             {STAT_KEYS.map((key) => {
@@ -118,7 +118,7 @@ export function AgentDetail({
                   <span className="mt-0.5 text-sm">{STAT_LABELS[key].emoji}</span>
                   <div>
                     <span className="text-xs font-semibold text-primary">
-                      {STAT_LABELS[key].en} {agent.stats[key]}
+                      {STAT_LABELS[key].ko} {agent.stats[key]}
                     </span>
                     <span className={`ml-1.5 rounded px-1 text-[10px] font-bold uppercase ${
                       t === "low" ? "bg-danger/15 text-danger"
@@ -146,30 +146,30 @@ export function AgentDetail({
           return hasAny ? (
             <section className="mt-6">
               <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
-                Debate Approach
+                토론 방식
               </h2>
               <div className="mt-3 space-y-2">
                 {style && (
                   <div className="rounded-lg bg-surface/50 px-3 py-2">
-                    <span className="text-xs font-semibold text-accent">{style.emoji} {style.label}</span>
+                    <span className="text-xs font-semibold text-accent">{style.emoji} {style.ko}</span>
                     <p className="mt-0.5 text-xs leading-relaxed text-text-muted">{style.prompt}</p>
                   </div>
                 )}
                 {phil && (
                   <div className="rounded-lg bg-surface/50 px-3 py-2">
-                    <span className="text-xs font-semibold text-accent">{phil.emoji} {phil.label}</span>
+                    <span className="text-xs font-semibold text-accent">{phil.emoji} {phil.ko}</span>
                     <p className="mt-0.5 text-xs leading-relaxed text-text-muted">{phil.prompt}</p>
                   </div>
                 )}
                 {strat && (
                   <div className="rounded-lg bg-surface/50 px-3 py-2">
-                    <span className="text-xs font-semibold text-accent">{strat.emoji} {strat.label}</span>
+                    <span className="text-xs font-semibold text-accent">{strat.emoji} {strat.ko}</span>
                     <p className="mt-0.5 text-xs leading-relaxed text-text-muted">{strat.prompt}</p>
                   </div>
                 )}
                 {p.custom_instructions && (
                   <div className="rounded-lg bg-surface/50 px-3 py-2">
-                    <span className="text-xs font-semibold text-accent">Custom Instructions</span>
+                    <span className="text-xs font-semibold text-accent">커스텀 지시사항</span>
                     <p className="mt-0.5 text-xs leading-relaxed text-text-muted">{p.custom_instructions}</p>
                   </div>
                 )}
@@ -184,7 +184,7 @@ export function AgentDetail({
           return badges.length > 0 ? (
             <section className="mt-6">
               <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
-                Badges
+                배지
               </h2>
               <div className="mt-2 flex flex-wrap gap-2">
                 {badges.map((badgeId) => {
@@ -209,7 +209,7 @@ export function AgentDetail({
         {agent.specialties.length > 0 && (
           <section className="mt-6">
             <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
-              Specialties
+              전문 분야
             </h2>
             <div className="mt-2 flex flex-wrap gap-2">
               {agent.specialties.map((s) => {
@@ -219,7 +219,7 @@ export function AgentDetail({
                     key={s}
                     className="rounded-full bg-primary-dim px-3 py-1 text-sm text-primary"
                   >
-                    {label?.emoji} {label?.en ?? s}
+                    {label?.emoji} {label?.ko ?? s}
                   </span>
                 );
               })}
@@ -233,16 +233,16 @@ export function AgentDetail({
             ([key]) => key !== "_badges",
           );
           const TRAIT_META: Record<string, { emoji: string; desc: string }> = {
-            Confidence: { emoji: "💪", desc: "Earned from a 5-win streak" },
-            Caution: { emoji: "🛡️", desc: "Earned from 3 consecutive losses" },
-            Grit: { emoji: "🦾", desc: "Earned from a comeback win" },
-            "Giant Slayer": { emoji: "⚔️", desc: "Beat a much stronger opponent" },
-            Experienced: { emoji: "🎖️", desc: "Completed 10+ battles" },
+            Confidence: { emoji: "💪", desc: "5연승 달성" },
+            Caution: { emoji: "🛡️", desc: "3연패 경험" },
+            Grit: { emoji: "🦾", desc: "역전승 달성" },
+            "Giant Slayer": { emoji: "⚔️", desc: "강적 격파" },
+            Experienced: { emoji: "🎖️", desc: "10전 이상 참가" },
           };
           return traitEntries.length > 0 ? (
             <section className="mt-6">
               <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
-                Evolved Traits
+                진화 특성
               </h2>
               <div className="mt-2 flex flex-wrap gap-2">
                 {traitEntries.map(([trait, value]) => {
@@ -270,7 +270,7 @@ export function AgentDetail({
         {battleHistory.length > 0 && (
           <section className="mt-6">
             <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
-              Recent Battles
+              최근 배틀
             </h2>
             <div className="mt-3 space-y-2">
               {battleHistory.map((b) => (
@@ -325,14 +325,14 @@ export function AgentDetail({
               href={`/agents/${agent.id}/edit`}
               className="flex-1 rounded-lg border border-border py-2 text-center text-sm font-medium text-text-muted transition hover:bg-surface-hover hover:text-text"
             >
-              Edit Agent
+              에이전트 수정
             </a>
             <button
               onClick={handleDelete}
               disabled={deleting}
               className="rounded-lg border border-danger/30 px-4 py-2 text-sm text-danger transition hover:bg-danger/10 disabled:opacity-50"
             >
-              {deleting ? "Deleting…" : "Delete"}
+              {deleting ? "삭제 중…" : "삭제"}
             </button>
           </div>
         )}

@@ -85,19 +85,19 @@ export function AgentEditor({ agent }: { agent: Agent }) {
           href={`/agents/${agent.id}`}
           className="text-sm text-text-muted hover:text-text"
         >
-          &larr; Back to {agent.name}
+          &larr; {agent.name}으로 돌아가기
         </a>
 
-        <h1 className="mt-4 text-2xl font-bold text-text">Edit Agent</h1>
+        <h1 className="mt-4 text-2xl font-bold text-text">에이전트 수정</h1>
         <p className="mt-1 text-sm text-text-muted">
-          Re-tune your agent&apos;s stats to change its debate personality.
+          스탯을 재조정해서 토론 성격을 바꿔보세요.
         </p>
 
         <form onSubmit={handleSave} className="mt-6 space-y-6">
           {/* Name */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-text-muted">
-              Agent Name
+              에이전트 이름
             </label>
             <input
               id="name"
@@ -113,19 +113,19 @@ export function AgentEditor({ agent }: { agent: Agent }) {
           {/* 8 Stats with diff indicators */}
           <div>
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-text-muted">Stats (1-10)</p>
+              <p className="text-sm font-medium text-text-muted">스탯 (1-10)</p>
               <p className={`text-xs ${overBudget ? "text-danger font-bold" : "text-text-muted"}`}>
                 <span className="font-mono text-text">{totalPoints}</span>/{STAT_BUDGET}
                 {overBudget
-                  ? ` (${-remaining} over!)`
+                  ? ` (${-remaining} 초과!)`
                   : remaining > 0
-                    ? ` (${remaining} left)`
+                    ? ` (${remaining} 남음)`
                     : ""}
               </p>
             </div>
             {overBudget && (
               <p className="mt-1 text-xs text-danger">
-                Over budget! Lower some stats to save.
+                포인트 초과! 일부 스탯을 낮춰야 저장할 수 있습니다.
               </p>
             )}
             <div className="mt-3 space-y-1">
@@ -140,7 +140,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
                   <div key={key}>
                     <div className="flex items-center gap-3">
                       <span className="w-6 text-center text-lg">{label.emoji}</span>
-                      <span className="w-24 text-sm text-text-muted">{label.en}</span>
+                      <span className="w-24 text-sm text-text-muted">{label.ko}</span>
                       <div className="relative flex-1">
                         <input
                           type="range"
@@ -191,7 +191,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
                         type="button"
                         onClick={() => setExpandedStat(isExpanded ? null : key)}
                         className="text-xs text-text-muted hover:text-text"
-                        title="Show what this stat does"
+                        title="이 스탯의 효과 보기"
                       >
                         {isExpanded ? "▲" : "?"}
                       </button>
@@ -231,7 +231,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
 
           {/* Specialties */}
           <div>
-            <p className="text-sm font-medium text-text-muted">Specialties (max 3)</p>
+            <p className="text-sm font-medium text-text-muted">전문 분야 (최대 3개)</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {SPECIALTIES.map((s) => {
                 const selected = specialties.includes(s);
@@ -247,7 +247,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
                         : "border border-border bg-surface text-text-muted hover:bg-surface-hover"
                     } ${!selected && specialties.length >= 3 ? "cursor-not-allowed opacity-40" : ""}`}
                   >
-                    {label.emoji} {label.en}
+                    {label.emoji} {label.ko}
                   </button>
                 );
               })}
@@ -257,7 +257,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
           {/* Speaking Style */}
           <div>
             <p className="text-sm font-medium text-text-muted">
-              Speaking Style <span className="text-text-muted/50">(optional)</span>
+              발화 스타일 <span className="text-text-muted/50">(선택)</span>
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {SPEAKING_STYLES.map((s) => (
@@ -276,7 +276,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
                       : "border border-border bg-surface text-text-muted hover:bg-surface-hover"
                   }`}
                 >
-                  {s.emoji} {s.label}
+                  {s.emoji} {s.ko}
                 </button>
               ))}
             </div>
@@ -285,7 +285,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
           {/* Debate Philosophy */}
           <div>
             <p className="text-sm font-medium text-text-muted">
-              Debate Philosophy <span className="text-text-muted/50">(optional)</span>
+              토론 철학 <span className="text-text-muted/50">(선택)</span>
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {DEBATE_PHILOSOPHIES.map((p) => (
@@ -304,7 +304,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
                       : "border border-border bg-surface text-text-muted hover:bg-surface-hover"
                   }`}
                 >
-                  {p.emoji} {p.label}
+                  {p.emoji} {p.ko}
                 </button>
               ))}
             </div>
@@ -313,7 +313,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
           {/* Strategy Pattern */}
           <div>
             <p className="text-sm font-medium text-text-muted">
-              Strategy Pattern <span className="text-text-muted/50">(optional)</span>
+              전략 패턴 <span className="text-text-muted/50">(선택)</span>
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {STRATEGY_PATTERNS.map((s) => (
@@ -332,7 +332,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
                       : "border border-border bg-surface text-text-muted hover:bg-surface-hover"
                   }`}
                 >
-                  {s.emoji} {s.label}
+                  {s.emoji} {s.ko}
                 </button>
               ))}
             </div>
@@ -341,7 +341,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
           {/* Custom Instructions */}
           <div>
             <label htmlFor="custom" className="block text-sm font-medium text-text-muted">
-              Custom Instructions <span className="text-text-muted/50">(optional, max 200 chars)</span>
+              커스텀 지시사항 <span className="text-text-muted/50">(선택, 최대 200자)</span>
             </label>
             <textarea
               id="custom"
@@ -355,7 +355,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
                 }))
               }
               className="mt-1 block w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text placeholder-text-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="e.g. Always end with a rhetorical question"
+              placeholder="예: 항상 수사적 질문으로 마무리하라"
             />
             <p className="mt-1 text-right text-xs text-text-muted">
               {personality.custom_instructions?.length ?? 0}/200
@@ -366,25 +366,25 @@ export function AgentEditor({ agent }: { agent: Agent }) {
           {hasChanges && (
             <div className="rounded-xl border border-warning/30 bg-warning/10 p-4">
               <p className="text-xs font-medium uppercase tracking-wider text-warning">
-                Changes
+                변경 사항
               </p>
               <ul className="mt-2 space-y-1 text-sm text-text">
                 {name !== agent.name && (
                   <li>
-                    Name: {agent.name} &rarr; {name}
+                    이름: {agent.name} &rarr; {name}
                   </li>
                 )}
                 {changedStats.map((k) => (
                   <li key={k}>
-                    {STAT_LABELS[k].emoji} {STAT_LABELS[k].en}: {agent.stats[k]} &rarr;{" "}
+                    {STAT_LABELS[k].emoji} {STAT_LABELS[k].ko}: {agent.stats[k]} &rarr;{" "}
                     {stats[k]}
                   </li>
                 ))}
                 {JSON.stringify(specialties) !== JSON.stringify(agent.specialties) && (
-                  <li>Specialties updated</li>
+                  <li>전문 분야 변경됨</li>
                 )}
                 {personalityChanged && (
-                  <li>Debate personality updated</li>
+                  <li>토론 성격 변경됨</li>
                 )}
               </ul>
             </div>
@@ -397,7 +397,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
             disabled={saving || !name.trim() || !hasChanges || overBudget}
             className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
           >
-            {saving ? "Saving..." : overBudget ? `Over Budget (${-remaining})` : "Save Changes"}
+            {saving ? "저장 중..." : overBudget ? `포인트 초과 (${-remaining})` : "변경 저장"}
           </button>
         </form>
       </div>

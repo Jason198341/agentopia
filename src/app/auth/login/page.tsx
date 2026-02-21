@@ -41,7 +41,7 @@ export default function LoginPage() {
             Agent<span className="text-primary">opia</span>
           </h1>
           <p className="mt-2 text-sm text-text-muted">
-            Sign in to your arena
+            아레나에 로그인하세요
           </p>
         </div>
 
@@ -51,7 +51,7 @@ export default function LoginPage() {
               htmlFor="email"
               className="block text-sm font-medium text-text-muted"
             >
-              Email
+              이메일
             </label>
             <input
               id="email"
@@ -69,7 +69,7 @@ export default function LoginPage() {
               htmlFor="password"
               className="block text-sm font-medium text-text-muted"
             >
-              Password
+              비밀번호
             </label>
             <input
               id="password"
@@ -92,17 +92,17 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
           >
-            {loading ? "Signing in…" : "Sign In"}
+            {loading ? "로그인 중…" : "로그인"}
           </button>
         </form>
 
         <p className="text-center text-sm text-text-muted">
-          No account?{" "}
+          계정이 없으신가요?{" "}
           <Link
             href="/auth/signup"
             className="font-medium text-primary hover:text-primary-hover"
           >
-            Create one
+            회원가입
           </Link>
         </p>
       </div>

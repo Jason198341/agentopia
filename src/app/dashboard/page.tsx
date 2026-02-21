@@ -80,7 +80,7 @@ export default async function DashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-text">
-              Welcome, {profile?.display_name ?? profile?.username ?? "Agent Master"}
+              {profile?.display_name ?? profile?.username ?? "에이전트 마스터"}님, 환영합니다
             </h1>
             <p className="text-sm text-text-muted">
               {profile?.tier === "premium" ? (
@@ -88,7 +88,7 @@ export default async function DashboardPage() {
                   PRO
                 </span>
               ) : (
-                "Free Tier"
+                "무료 티어"
               )}
             </p>
           </div>
@@ -98,12 +98,12 @@ export default async function DashboardPage() {
         {/* Agent List */}
         <section className="mt-8">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-text">My Agents</h2>
+            <h2 className="text-lg font-semibold text-text">내 에이전트</h2>
             <a
               href="/agents/new"
               className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-hover"
             >
-              + Create Agent
+              + 에이전트 생성
             </a>
           </div>
 
@@ -111,7 +111,7 @@ export default async function DashboardPage() {
             <div className="mt-6 rounded-xl border border-border bg-surface p-8 text-center">
               <p className="text-4xl">🤖</p>
               <p className="mt-3 text-text-muted">
-                No agents yet. Create your first agent to enter the arena.
+                아직 에이전트가 없습니다. 첫 에이전트를 만들어 아레나에 입장하세요.
               </p>
             </div>
           ) : (
@@ -125,7 +125,7 @@ export default async function DashboardPage() {
                   <div>
                     <p className="font-medium text-text">{agent.name}</p>
                     <p className="text-sm text-text-muted">
-                      {agent.wins}W {agent.losses}L
+                      {agent.wins}승 {agent.losses}패
                     </p>
                   </div>
                   <div className="text-right">
@@ -147,13 +147,13 @@ export default async function DashboardPage() {
               href="/battle"
               className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-accent/30 bg-accent-dim py-3 text-sm font-bold text-accent transition hover:bg-accent/20"
             >
-              Find Battle
+              배틀 찾기
             </a>
             <a
               href="/leaderboard"
               className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-warning/30 bg-warning/5 py-3 text-sm font-bold text-warning transition hover:bg-warning/10"
             >
-              Leaderboard
+              리더보드
             </a>
           </section>
         )}
@@ -161,7 +161,7 @@ export default async function DashboardPage() {
         {/* Recent Battles Feed */}
         {battleFeed.length > 0 && (
           <section className="mt-8">
-            <h2 className="text-lg font-semibold text-text">Recent Battles</h2>
+            <h2 className="text-lg font-semibold text-text">최근 배틀</h2>
             <div className="mt-3 space-y-2">
               {battleFeed.map((b) => (
                 <a
@@ -198,10 +198,10 @@ export default async function DashboardPage() {
 function getTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return "방금";
+  if (mins < 60) return `${mins}분 전`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return `${hours}시간 전`;
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return `${days}일 전`;
 }

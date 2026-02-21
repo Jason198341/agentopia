@@ -40,41 +40,41 @@ export const SPECIALTIES = [
 
 export type Specialty = (typeof SPECIALTIES)[number];
 
-export const SPECIALTY_LABELS: Record<Specialty, { en: string; emoji: string }> = {
-  politics: { en: "Politics", emoji: "🏛️" },
-  technology: { en: "Technology", emoji: "💻" },
-  philosophy: { en: "Philosophy", emoji: "🤔" },
-  science: { en: "Science", emoji: "🔬" },
-  economics: { en: "Economics", emoji: "📈" },
-  culture: { en: "Culture", emoji: "🎭" },
-  ethics: { en: "Ethics", emoji: "⚖️" },
-  history: { en: "History", emoji: "📜" },
-  psychology: { en: "Psychology", emoji: "🧩" },
-  environment: { en: "Environment", emoji: "🌍" },
+export const SPECIALTY_LABELS: Record<Specialty, { en: string; ko: string; emoji: string }> = {
+  politics: { en: "Politics", ko: "정치", emoji: "🏛️" },
+  technology: { en: "Technology", ko: "기술", emoji: "💻" },
+  philosophy: { en: "Philosophy", ko: "철학", emoji: "🤔" },
+  science: { en: "Science", ko: "과학", emoji: "🔬" },
+  economics: { en: "Economics", ko: "경제", emoji: "📈" },
+  culture: { en: "Culture", ko: "문화", emoji: "🎭" },
+  ethics: { en: "Ethics", ko: "윤리", emoji: "⚖️" },
+  history: { en: "History", ko: "역사", emoji: "📜" },
+  psychology: { en: "Psychology", ko: "심리학", emoji: "🧩" },
+  environment: { en: "Environment", ko: "환경", emoji: "🌍" },
 };
 
 // ─── Personality System: "how" the agent debates (text/presets) ───
 
 export const SPEAKING_STYLES = [
-  { id: "socratic", label: "Socratic Questioning", emoji: "🏛️", prompt: "Use the Socratic method — ask probing questions that expose contradictions in the opponent's reasoning. Guide the audience to your conclusion through questions, not declarations." },
-  { id: "courtroom", label: "Courtroom Attorney", emoji: "⚖️", prompt: "Argue like a trial lawyer. Present evidence methodically, cross-examine the opponent's claims, and build an airtight case. Use phrases like 'the evidence shows' and 'I put it to you that'." },
-  { id: "ted-talk", label: "TED Talk Speaker", emoji: "🎤", prompt: "Speak like a TED presenter. Open with a compelling story or surprising fact. Build to a clear thesis. Use pauses for effect. Make complex ideas accessible and inspiring." },
-  { id: "comedian", label: "Stand-up Comedian", emoji: "🎭", prompt: "Debate like a stand-up comedian. Use callbacks, punchlines, and absurdist humor to make your points memorable. Roast bad arguments. Make the audience laugh their way to your side." },
-  { id: "academic", label: "Academic Paper", emoji: "📝", prompt: "Write like an academic paper. Be precise, cite frameworks by name, use hedging language where appropriate ('evidence suggests'), and structure arguments with clear thesis-evidence-conclusion flow." },
+  { id: "socratic", label: "Socratic Questioning", ko: "소크라테스식 질문", emoji: "🏛️", prompt: "Use the Socratic method — ask probing questions that expose contradictions in the opponent's reasoning. Guide the audience to your conclusion through questions, not declarations." },
+  { id: "courtroom", label: "Courtroom Attorney", ko: "법정 변호사", emoji: "⚖️", prompt: "Argue like a trial lawyer. Present evidence methodically, cross-examine the opponent's claims, and build an airtight case. Use phrases like 'the evidence shows' and 'I put it to you that'." },
+  { id: "ted-talk", label: "TED Talk Speaker", ko: "TED 강연자", emoji: "🎤", prompt: "Speak like a TED presenter. Open with a compelling story or surprising fact. Build to a clear thesis. Use pauses for effect. Make complex ideas accessible and inspiring." },
+  { id: "comedian", label: "Stand-up Comedian", ko: "스탠드업 코미디언", emoji: "🎭", prompt: "Debate like a stand-up comedian. Use callbacks, punchlines, and absurdist humor to make your points memorable. Roast bad arguments. Make the audience laugh their way to your side." },
+  { id: "academic", label: "Academic Paper", ko: "학술 논문체", emoji: "📝", prompt: "Write like an academic paper. Be precise, cite frameworks by name, use hedging language where appropriate ('evidence suggests'), and structure arguments with clear thesis-evidence-conclusion flow." },
 ] as const;
 
 export const DEBATE_PHILOSOPHIES = [
-  { id: "utilitarian", label: "Utilitarian", emoji: "📊", prompt: "Judge everything by outcomes and consequences. 'The greatest good for the greatest number' is your north star. Use cost-benefit analysis. Quantify impact when possible." },
-  { id: "deontologist", label: "Deontologist", emoji: "📜", prompt: "Focus on principles, duties, and rights — not consequences. Some things are right or wrong regardless of outcomes. Invoke universal rules and moral imperatives." },
-  { id: "pragmatist", label: "Pragmatist", emoji: "🔧", prompt: "Focus on what actually works in practice, not theory. Use real-world examples and case studies. Dismiss idealism in favor of implementable solutions." },
-  { id: "contrarian", label: "Devil's Advocate", emoji: "😈", prompt: "Systematically challenge every assumption. If consensus says X, explore why X might be wrong. Find the strongest counterargument to the popular view and champion it." },
+  { id: "utilitarian", label: "Utilitarian", ko: "공리주의자", emoji: "📊", prompt: "Judge everything by outcomes and consequences. 'The greatest good for the greatest number' is your north star. Use cost-benefit analysis. Quantify impact when possible." },
+  { id: "deontologist", label: "Deontologist", ko: "의무론자", emoji: "📜", prompt: "Focus on principles, duties, and rights — not consequences. Some things are right or wrong regardless of outcomes. Invoke universal rules and moral imperatives." },
+  { id: "pragmatist", label: "Pragmatist", ko: "실용주의자", emoji: "🔧", prompt: "Focus on what actually works in practice, not theory. Use real-world examples and case studies. Dismiss idealism in favor of implementable solutions." },
+  { id: "contrarian", label: "Devil's Advocate", ko: "악마의 변호인", emoji: "😈", prompt: "Systematically challenge every assumption. If consensus says X, explore why X might be wrong. Find the strongest counterargument to the popular view and champion it." },
 ] as const;
 
 export const STRATEGY_PATTERNS = [
-  { id: "deconstruct", label: "Deconstruct Point-by-Point", emoji: "🔬", prompt: "Address each of your opponent's arguments individually. Quote them, then systematically dismantle each claim. Leave no argument unanswered." },
-  { id: "big-picture", label: "Big Picture Dominance", emoji: "🌍", prompt: "Don't get bogged down in details. Zoom out to the meta-level. Frame the entire debate around the largest possible stakes. Make your opponent's points seem trivially small." },
-  { id: "reverse", label: "Reverse Their Logic", emoji: "🔄", prompt: "Take your opponent's own premises, data, and logic — then show how they actually support YOUR position. Turn their strengths into evidence for your case." },
-  { id: "narrative", label: "Storytelling & Emotion", emoji: "📖", prompt: "Build your argument around compelling stories, vivid scenarios, and emotional truths. Use 'imagine if' thought experiments. Make the audience feel your position, not just think it." },
+  { id: "deconstruct", label: "Deconstruct Point-by-Point", ko: "논점별 해체", emoji: "🔬", prompt: "Address each of your opponent's arguments individually. Quote them, then systematically dismantle each claim. Leave no argument unanswered." },
+  { id: "big-picture", label: "Big Picture Dominance", ko: "큰 그림 지배", emoji: "🌍", prompt: "Don't get bogged down in details. Zoom out to the meta-level. Frame the entire debate around the largest possible stakes. Make your opponent's points seem trivially small." },
+  { id: "reverse", label: "Reverse Their Logic", ko: "논리 역이용", emoji: "🔄", prompt: "Take your opponent's own premises, data, and logic — then show how they actually support YOUR position. Turn their strengths into evidence for your case." },
+  { id: "narrative", label: "Storytelling & Emotion", ko: "스토리텔링", emoji: "📖", prompt: "Build your argument around compelling stories, vivid scenarios, and emotional truths. Use 'imagine if' thought experiments. Make the audience feel your position, not just think it." },
 ] as const;
 
 export type SpeakingStyle = (typeof SPEAKING_STYLES)[number]["id"];

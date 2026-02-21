@@ -83,18 +83,18 @@ export default function NewAgentPage() {
     <div className="min-h-screen bg-bg px-4 py-8">
       <div className="mx-auto max-w-2xl">
         <a href="/dashboard" className="text-sm text-text-muted hover:text-text">
-          &larr; Back to Dashboard
+          &larr; 대시보드
         </a>
 
-        <h1 className="mt-4 text-2xl font-bold text-text">Create Agent</h1>
+        <h1 className="mt-4 text-2xl font-bold text-text">에이전트 생성</h1>
         <p className="mt-1 text-sm text-text-muted">
-          Design your AI debater. Tune the 8 stats to shape its personality.
+          AI 토론자를 설계하세요. 8개 스탯을 조절해 성격을 만드세요.
         </p>
 
         {/* Presets */}
         <div className="mt-6">
           <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
-            Quick Presets
+            빠른 프리셋
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             {PRESETS.map((p, i) => (
@@ -114,7 +114,7 @@ export default function NewAgentPage() {
           {/* Name */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-text-muted">
-              Agent Name
+              에이전트 이름
             </label>
             <input
               id="name"
@@ -124,26 +124,26 @@ export default function NewAgentPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="mt-1 block w-full rounded-lg border border-border bg-surface px-3 py-2 text-text placeholder-text-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="e.g. DeepThink-7"
+              placeholder="예: DeepThink-7"
             />
           </div>
 
           {/* 8 Stats */}
           <div>
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-text-muted">Stats (1-10)</p>
+              <p className="text-sm font-medium text-text-muted">스탯 (1-10)</p>
               <p className={`text-xs ${overBudget ? "text-danger font-bold" : "text-text-muted"}`}>
                 <span className="font-mono text-text">{totalPoints}</span>/{STAT_BUDGET}
                 {overBudget
-                  ? ` (${-remaining} over!)`
+                  ? ` (${-remaining} 초과!)`
                   : remaining > 0
-                    ? ` (${remaining} left)`
+                    ? ` (${remaining} 남음)`
                     : ""}
               </p>
             </div>
             {overBudget && (
               <p className="mt-1 text-xs text-danger">
-                Over budget! Lower some stats to deploy your agent.
+                포인트 초과! 일부 스탯을 낮춰야 배치할 수 있습니다.
               </p>
             )}
             <div className="mt-3 space-y-3">
@@ -153,7 +153,7 @@ export default function NewAgentPage() {
                 return (
                   <div key={key} className="flex items-center gap-3">
                     <span className="w-6 text-center text-lg">{label.emoji}</span>
-                    <span className="w-24 text-sm text-text-muted">{label.en}</span>
+                    <span className="w-24 text-sm text-text-muted">{label.ko}</span>
                     <input
                       type="range"
                       min={1}
@@ -174,7 +174,7 @@ export default function NewAgentPage() {
           {/* Specialties */}
           <div>
             <p className="text-sm font-medium text-text-muted">
-              Specialties (max 3)
+              전문 분야 (최대 3개)
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {SPECIALTIES.map((s) => {
@@ -191,7 +191,7 @@ export default function NewAgentPage() {
                         : "border border-border bg-surface text-text-muted hover:bg-surface-hover"
                     } ${!selected && specialties.length >= 3 ? "opacity-40 cursor-not-allowed" : ""}`}
                   >
-                    {label.emoji} {label.en}
+                    {label.emoji} {label.ko}
                   </button>
                 );
               })}
@@ -201,7 +201,7 @@ export default function NewAgentPage() {
           {/* Debate Style */}
           <div>
             <p className="text-sm font-medium text-text-muted">
-              Speaking Style <span className="text-text-muted/50">(optional)</span>
+              발화 스타일 <span className="text-text-muted/50">(선택)</span>
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {SPEAKING_STYLES.map((s) => (
@@ -220,7 +220,7 @@ export default function NewAgentPage() {
                       : "border border-border bg-surface text-text-muted hover:bg-surface-hover"
                   }`}
                 >
-                  {s.emoji} {s.label}
+                  {s.emoji} {s.ko}
                 </button>
               ))}
             </div>
@@ -229,7 +229,7 @@ export default function NewAgentPage() {
           {/* Debate Philosophy */}
           <div>
             <p className="text-sm font-medium text-text-muted">
-              Debate Philosophy <span className="text-text-muted/50">(optional)</span>
+              토론 철학 <span className="text-text-muted/50">(선택)</span>
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {DEBATE_PHILOSOPHIES.map((p) => (
@@ -248,7 +248,7 @@ export default function NewAgentPage() {
                       : "border border-border bg-surface text-text-muted hover:bg-surface-hover"
                   }`}
                 >
-                  {p.emoji} {p.label}
+                  {p.emoji} {p.ko}
                 </button>
               ))}
             </div>
@@ -257,7 +257,7 @@ export default function NewAgentPage() {
           {/* Strategy Pattern */}
           <div>
             <p className="text-sm font-medium text-text-muted">
-              Strategy Pattern <span className="text-text-muted/50">(optional)</span>
+              전략 패턴 <span className="text-text-muted/50">(선택)</span>
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {STRATEGY_PATTERNS.map((s) => (
@@ -276,7 +276,7 @@ export default function NewAgentPage() {
                       : "border border-border bg-surface text-text-muted hover:bg-surface-hover"
                   }`}
                 >
-                  {s.emoji} {s.label}
+                  {s.emoji} {s.ko}
                 </button>
               ))}
             </div>
@@ -285,7 +285,7 @@ export default function NewAgentPage() {
           {/* Custom Instructions */}
           <div>
             <label htmlFor="custom" className="block text-sm font-medium text-text-muted">
-              Custom Instructions <span className="text-text-muted/50">(optional, max 200 chars)</span>
+              커스텀 지시사항 <span className="text-text-muted/50">(선택, 최대 200자)</span>
             </label>
             <textarea
               id="custom"
@@ -299,7 +299,7 @@ export default function NewAgentPage() {
                 }))
               }
               className="mt-1 block w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text placeholder-text-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="e.g. Always end with a rhetorical question"
+              placeholder="예: 항상 수사적 질문으로 마무리하라"
             />
             <p className="mt-1 text-right text-xs text-text-muted">
               {personality.custom_instructions?.length ?? 0}/200
@@ -309,7 +309,7 @@ export default function NewAgentPage() {
           {/* Stat Summary */}
           <div className="rounded-xl border border-border bg-surface p-4">
             <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
-              Personality Preview
+              성격 미리보기
             </p>
             <p className="mt-2 text-sm text-text">
               {describeAgent(stats)}
@@ -323,7 +323,7 @@ export default function NewAgentPage() {
             disabled={saving || !name.trim() || overBudget}
             className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
           >
-            {saving ? "Creating…" : overBudget ? `Over Budget (${-remaining})` : "Deploy Agent"}
+            {saving ? "생성 중…" : overBudget ? `포인트 초과 (${-remaining})` : "에이전트 배치"}
           </button>
         </form>
       </div>
@@ -335,21 +335,21 @@ export default function NewAgentPage() {
 function describeAgent(stats: AgentStats): string {
   const traits: string[] = [];
 
-  if (stats.logic >= 8) traits.push("methodical and evidence-driven");
-  else if (stats.logic <= 3) traits.push("intuition-based");
+  if (stats.logic >= 8) traits.push("체계적이고 근거 중심");
+  else if (stats.logic <= 3) traits.push("직감형");
 
-  if (stats.aggression >= 8) traits.push("aggressively confrontational");
-  else if (stats.aggression <= 3) traits.push("diplomatically restrained");
+  if (stats.aggression >= 8) traits.push("공격적 대립형");
+  else if (stats.aggression <= 3) traits.push("외교적 절제형");
 
-  if (stats.humor >= 7) traits.push("witty");
-  if (stats.boldness >= 8) traits.push("fearlessly provocative");
-  if (stats.creativity >= 8) traits.push("wildly creative with analogies");
-  if (stats.knowledge >= 8) traits.push("deeply knowledgeable");
-  if (stats.adaptability >= 8) traits.push("highly adaptive to opponent style");
-  if (stats.brevity >= 8) traits.push("razor-sharp and concise");
-  else if (stats.brevity <= 3) traits.push("elaborate and detailed");
+  if (stats.humor >= 7) traits.push("재치 있는");
+  if (stats.boldness >= 8) traits.push("도발적이고 대담한");
+  if (stats.creativity >= 8) traits.push("비유를 자유자재로 쓰는");
+  if (stats.knowledge >= 8) traits.push("깊은 지식을 갖춘");
+  if (stats.adaptability >= 8) traits.push("상대 스타일에 빠르게 적응하는");
+  if (stats.brevity >= 8) traits.push("칼날같이 간결한");
+  else if (stats.brevity <= 3) traits.push("정교하고 상세한");
 
-  if (traits.length === 0) traits.push("balanced across all dimensions");
+  if (traits.length === 0) traits.push("모든 영역에서 균형 잡힌");
 
-  return `This agent is ${traits.join(", ")}.`;
+  return `이 에이전트는 ${traits.join(", ")} 성향입니다.`;
 }

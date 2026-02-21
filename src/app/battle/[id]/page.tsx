@@ -29,9 +29,9 @@ export default async function BattleDetailPage({
       <div className="flex min-h-screen items-center justify-center bg-bg">
         <div className="text-center">
           <p className="text-4xl">404</p>
-          <p className="mt-2 text-text-muted">Battle not found.</p>
+          <p className="mt-2 text-text-muted">배틀을 찾을 수 없습니다.</p>
           <a href="/dashboard" className="mt-4 inline-block text-primary hover:text-primary-hover">
-            Back to Dashboard
+            대시보드로 돌아가기
           </a>
         </div>
       </div>
@@ -59,7 +59,7 @@ export default async function BattleDetailPage({
   if (!agentARow || !agentBRow) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg">
-        <p className="text-text-muted">Agent data unavailable.</p>
+        <p className="text-text-muted">에이전트 데이터를 불러올 수 없습니다.</p>
       </div>
     );
   }

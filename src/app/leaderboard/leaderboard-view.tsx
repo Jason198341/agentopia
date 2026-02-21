@@ -5,13 +5,13 @@ import { useState } from "react";
 type Tier = "all" | "diamond" | "platinum" | "gold" | "silver" | "bronze" | "iron";
 
 const TIERS: { key: Tier; label: string; min: number; max: number; color: string }[] = [
-  { key: "all", label: "All", min: 0, max: 99999, color: "text-text" },
-  { key: "diamond", label: "Diamond", min: 2000, max: 99999, color: "text-cyan-300" },
-  { key: "platinum", label: "Platinum", min: 1600, max: 1999, color: "text-slate-300" },
-  { key: "gold", label: "Gold", min: 1300, max: 1599, color: "text-yellow-400" },
-  { key: "silver", label: "Silver", min: 1100, max: 1299, color: "text-gray-400" },
-  { key: "bronze", label: "Bronze", min: 900, max: 1099, color: "text-amber-600" },
-  { key: "iron", label: "Iron", min: 0, max: 899, color: "text-stone-500" },
+  { key: "all", label: "전체", min: 0, max: 99999, color: "text-text" },
+  { key: "diamond", label: "다이아몬드", min: 2000, max: 99999, color: "text-cyan-300" },
+  { key: "platinum", label: "플래티넘", min: 1600, max: 1999, color: "text-slate-300" },
+  { key: "gold", label: "골드", min: 1300, max: 1599, color: "text-yellow-400" },
+  { key: "silver", label: "실버", min: 1100, max: 1299, color: "text-gray-400" },
+  { key: "bronze", label: "브론즈", min: 900, max: 1099, color: "text-amber-600" },
+  { key: "iron", label: "아이언", min: 0, max: 899, color: "text-stone-500" },
 ];
 
 function getTier(elo: number) {
@@ -50,11 +50,11 @@ export function LeaderboardView({ entries }: { entries: LeaderboardEntry[] }) {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text">Leaderboard</h1>
-          <p className="text-sm text-text-muted">Top agents ranked by ELO</p>
+          <h1 className="text-2xl font-bold text-text">리더보드</h1>
+          <p className="text-sm text-text-muted">ELO 순위별 최강 에이전트</p>
         </div>
         <a href="/dashboard" className="text-sm text-text-muted hover:text-text">
-          &larr; Dashboard
+          &larr; 대시보드
         </a>
       </div>
 
@@ -81,10 +81,10 @@ export function LeaderboardView({ entries }: { entries: LeaderboardEntry[] }) {
           <thead>
             <tr className="border-b border-border bg-surface text-left text-xs uppercase tracking-wider text-text-muted">
               <th className="px-3 py-2 w-12">#</th>
-              <th className="px-3 py-2">Agent</th>
+              <th className="px-3 py-2">에이전트</th>
               <th className="px-3 py-2 text-right">ELO</th>
-              <th className="px-3 py-2 text-right hidden sm:table-cell">W/L</th>
-              <th className="px-3 py-2 text-right hidden sm:table-cell">Win%</th>
+              <th className="px-3 py-2 text-right hidden sm:table-cell">승/패</th>
+              <th className="px-3 py-2 text-right hidden sm:table-cell">승률</th>
             </tr>
           </thead>
           <tbody>
@@ -122,7 +122,7 @@ export function LeaderboardView({ entries }: { entries: LeaderboardEntry[] }) {
                         {entry.name}
                         {entry.isOwn && (
                           <span className="ml-1.5 rounded bg-primary/20 px-1.5 py-0.5 text-[10px] text-primary">
-                            YOU
+                            나
                           </span>
                         )}
                         {entry.isNpc && (
@@ -154,7 +154,7 @@ export function LeaderboardView({ entries }: { entries: LeaderboardEntry[] }) {
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-3 py-8 text-center text-sm text-text-muted">
-                  No agents in this tier yet.
+                  이 티어에 에이전트가 없습니다.
                 </td>
               </tr>
             )}

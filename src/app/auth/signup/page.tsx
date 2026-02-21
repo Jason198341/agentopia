@@ -48,7 +48,7 @@ export default function SignupPage() {
             Agent<span className="text-primary">opia</span>
           </h1>
           <p className="mt-2 text-sm text-text-muted">
-            Enter the arena
+            아레나에 입장하세요
           </p>
         </div>
 
@@ -58,7 +58,7 @@ export default function SignupPage() {
               htmlFor="username"
               className="block text-sm font-medium text-text-muted"
             >
-              Username
+              사용자명
             </label>
             <input
               id="username"
@@ -73,7 +73,7 @@ export default function SignupPage() {
               placeholder="agent_master"
             />
             <p className="mt-1 text-xs text-text-muted">
-              Letters, numbers, underscores. 3-20 chars.
+              영문, 숫자, 밑줄(_). 3~20자.
             </p>
           </div>
 
@@ -82,7 +82,7 @@ export default function SignupPage() {
               htmlFor="email"
               className="block text-sm font-medium text-text-muted"
             >
-              Email
+              이메일
             </label>
             <input
               id="email"
@@ -100,7 +100,7 @@ export default function SignupPage() {
               htmlFor="password"
               className="block text-sm font-medium text-text-muted"
             >
-              Password
+              비밀번호
             </label>
             <input
               id="password"
@@ -113,7 +113,7 @@ export default function SignupPage() {
               placeholder="••••••••"
             />
             <p className="mt-1 text-xs text-text-muted">
-              At least 6 characters.
+              6자 이상.
             </p>
           </div>
 
@@ -126,17 +126,17 @@ export default function SignupPage() {
             disabled={loading}
             className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
           >
-            {loading ? "Creating account…" : "Create Account"}
+            {loading ? "계정 생성 중…" : "계정 만들기"}
           </button>
         </form>
 
         <p className="text-center text-sm text-text-muted">
-          Already have an account?{" "}
+          이미 계정이 있으신가요?{" "}
           <Link
             href="/auth/login"
             className="font-medium text-primary hover:text-primary-hover"
           >
-            Sign in
+            로그인
           </Link>
         </p>
       </div>

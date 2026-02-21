@@ -16,11 +16,11 @@ interface Props {
 }
 
 const TURN_LABELS: Record<string, string> = {
-  opening: "Opening Statement",
-  rebuttal: "Rebuttal",
-  counter: "Counter-Rebuttal",
-  free: "Free Exchange",
-  closing: "Closing Statement",
+  opening: "오프닝",
+  rebuttal: "반박",
+  counter: "재반박",
+  free: "자유 토론",
+  closing: "마무리 발언",
 };
 
 export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
@@ -57,7 +57,7 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
     <div>
       {/* Header */}
       <a href="/dashboard" className="text-sm text-text-muted hover:text-text">
-        &larr; Dashboard
+        &larr; 대시보드
       </a>
 
       <div className="mt-4 rounded-xl border border-border bg-surface p-4">
@@ -74,7 +74,7 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
                   : "bg-warning/15 text-warning"
             }`}
           >
-            {difficulty}
+            {difficulty === "casual" ? "캐주얼" : difficulty === "advanced" ? "고급" : "표준"}
           </span>
         </div>
         <h1 className="mt-1 text-center text-lg font-bold text-text">
@@ -82,13 +82,13 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
         </h1>
         <div className="mt-3 flex items-center justify-between">
           <div className="text-center">
-            <p className="text-sm font-medium text-success">PRO</p>
+            <p className="text-sm font-medium text-success">찬성</p>
             <p className="font-bold text-text">{agentA.name}</p>
             <p className="text-xs text-text-muted">ELO {agentA.elo}</p>
           </div>
           <p className="text-2xl font-bold text-text-muted">VS</p>
           <div className="text-center">
-            <p className="text-sm font-medium text-danger">CON</p>
+            <p className="text-sm font-medium text-danger">반대</p>
             <p className="font-bold text-text">{agentB.name}</p>
             <p className="text-xs text-text-muted">ELO {agentB.elo}</p>
           </div>
@@ -97,7 +97,7 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
 
       {isAborted && (
         <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 p-3 text-center text-sm text-danger">
-          This battle was aborted due to an error.
+          이 배틀은 오류로 인해 중단되었습니다.
         </div>
       )}
 
@@ -108,14 +108,14 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
           return (
             <div key={pair.turnNumber} className="space-y-2">
               <p className="text-center text-xs font-medium uppercase tracking-wider text-text-muted">
-                Turn {pair.turnNumber} &mdash; {TURN_LABELS[pair.type]}
+                {pair.turnNumber}턴 &mdash; {TURN_LABELS[pair.type]}
               </p>
 
               {/* PRO message */}
               {pair.pro && (
                 <div className="rounded-xl border border-success/20 bg-success/5 p-4">
                   <p className="mb-1 text-xs font-medium text-success">
-                    {agentA.name} (PRO)
+                    {agentA.name} (찬성)
                   </p>
                   <p className="whitespace-pre-wrap text-sm text-text">
                     {pair.pro.content}
@@ -127,7 +127,7 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
               {pair.con && (
                 <div className="rounded-xl border border-danger/20 bg-danger/5 p-4">
                   <p className="mb-1 text-xs font-medium text-danger">
-                    {agentB.name} (CON)
+                    {agentB.name} (반대)
                   </p>
                   <p className="whitespace-pre-wrap text-sm text-text">
                     {pair.con.content}
@@ -146,8 +146,8 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
           className="mt-6 w-full rounded-xl border border-primary/30 bg-primary-dim py-3 font-medium text-primary transition hover:bg-primary/20"
         >
           {revealedTurn <= 5
-            ? `Next Turn (${revealedTurn}/${5})`
-            : "Reveal Scores"}
+            ? `다음 턴 (${revealedTurn}/5)`
+            : "점수 공개"}
         </button>
       )}
 
@@ -155,7 +155,7 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
       {showScores && battle.score_a && battle.score_b && (
         <div className="mt-6">
           <h2 className="text-center text-sm font-medium uppercase tracking-wider text-text-muted">
-            Judge&apos;s Scores
+            심판 판정
           </h2>
 
           <ScoreComparison
@@ -170,7 +170,7 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
             {battle.winner_id ? (
               <>
                 <p className="text-2xl font-bold text-warning">
-                  {battle.winner_id === agentA.id ? agentA.name : agentB.name} Wins!
+                  {battle.winner_id === agentA.id ? agentA.name : agentB.name} 승리!
                 </p>
                 <div className="mt-2 flex justify-center gap-6 text-sm">
                   <span className={battle.elo_change_a > 0 ? "text-success" : "text-danger"}>
@@ -184,7 +184,7 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
                 </div>
               </>
             ) : (
-              <p className="text-2xl font-bold text-warning">Draw!</p>
+              <p className="text-2xl font-bold text-warning">무승부!</p>
             )}
           </div>
 
@@ -203,14 +203,14 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
                 href="/battle"
                 className="flex-1 rounded-xl bg-primary py-3 text-center font-medium text-white transition hover:bg-primary-hover"
               >
-                Rematch
+                재대결
               </a>
             )}
             <a
               href="/dashboard"
               className="flex-1 rounded-xl border border-border py-3 text-center font-medium text-text-muted transition hover:bg-surface-hover hover:text-text"
             >
-              Dashboard
+              대시보드
             </a>
           </div>
 
@@ -237,27 +237,27 @@ export function BattleReplay({ battle, turns, agentA, agentB, userId }: Props) {
 const CRITERIA_STAT_MAP: Record<string, { stats: (keyof AgentStats)[]; tip: string }> = {
   logic: {
     stats: ["logic", "knowledge"],
-    tip: "Strengthen logical reasoning with higher Logic and Knowledge stats.",
+    tip: "논리와 지식 스탯을 올리면 논증 구조가 탄탄해집니다.",
   },
   rebuttal: {
     stats: ["aggression", "logic", "adaptability"],
-    tip: "Better rebuttals need Aggression to attack weak points, Logic for precision, and Adaptability to counter dynamically.",
+    tip: "공격(약점 공략), 논리(정밀 반격), 적응(동적 대응)이 반박력을 높입니다.",
   },
   consistency: {
     stats: ["logic", "knowledge"],
-    tip: "Stay consistent by boosting Logic (structured thinking) and Knowledge (factual grounding).",
+    tip: "논리(구조적 사고)와 지식(사실 근거)을 높이면 일관성이 강화됩니다.",
   },
   persuasion: {
     stats: ["boldness", "creativity", "humor"],
-    tip: "More persuasive arguments come from Boldness (strong positions), Creativity (fresh angles), and Humor (audience engagement).",
+    tip: "대담(강한 입장), 창의(새로운 관점), 유머(청중 몰입)가 설득력을 만듭니다.",
   },
   expression: {
     stats: ["brevity", "humor", "creativity"],
-    tip: "Clearer expression uses Brevity (concise delivery), Humor (engaging tone), and Creativity (vivid language).",
+    tip: "간결(핵심 전달), 유머(매력적 톤), 창의(생생한 표현)가 표현력을 높입니다.",
   },
   factual: {
     stats: ["knowledge", "logic"],
-    tip: "Factual accuracy depends on Knowledge (domain expertise and precision) and Logic (evidence-based reasoning).",
+    tip: "지식(전문성과 정밀도)과 논리(근거 기반 추론)가 사실 정확성의 핵심입니다.",
   },
 };
 
@@ -335,12 +335,12 @@ function BattleAnalysis({
       >
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-accent">
-            Battle Analysis Report
+            배틀 분석 리포트
           </span>
           <span className="text-xs text-text-muted">{expanded ? "▲" : "▼"}</span>
         </div>
         <p className="mt-1 text-xs text-text-muted">
-          {won ? "See what you did well and how to stay dominant." : draw ? "Analyze the stalemate and find an edge." : "Understand what went wrong and how to improve."}
+          {won ? "잘한 점과 우위를 유지하는 방법을 확인하세요." : draw ? "교착 상태를 분석하고 돌파구를 찾아보세요." : "무엇이 잘못됐는지 파악하고 개선점을 확인하세요."}
         </p>
       </button>
 
@@ -349,7 +349,7 @@ function BattleAnalysis({
           {/* Radar Chart */}
           <div className="rounded-xl border border-border bg-surface p-4">
             <h3 className="text-xs font-medium uppercase tracking-wider text-text-muted">
-              Score Radar
+              점수 레이더
             </h3>
             <div className="mt-3 flex justify-center">
               <RadarChart myScore={myScore} theirScore={theirScore} />
@@ -361,7 +361,7 @@ function BattleAnalysis({
               </span>
               <span className="flex items-center gap-1">
                 <span className="inline-block h-2 w-2 rounded-full bg-danger" />
-                Opponent
+                상대
               </span>
             </div>
           </div>
@@ -370,14 +370,14 @@ function BattleAnalysis({
           {!won && branchingTurn && (
             <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
               <h3 className="text-xs font-medium uppercase tracking-wider text-warning">
-                Branching Point — Turn {branchingTurn.turn}
+                전환점 — {branchingTurn.turn}턴
               </h3>
               <p className="mt-2 text-sm text-text">
-                The <strong>{TURN_LABELS[branchingTurn.type]}</strong> phase appears to be where the battle shifted. Your agent&apos;s response was{" "}
-                {branchingTurn.ratio < 0.7 ? "significantly shorter" : "relatively thin"} compared to your opponent&apos;s, suggesting a missed opportunity to develop stronger arguments.
+                <strong>{TURN_LABELS[branchingTurn.type]}</strong> 단계에서 승부가 갈린 것으로 보입니다. 당신의 에이전트 응답이 상대에 비해{" "}
+                {branchingTurn.ratio < 0.7 ? "현저히 짧아" : "다소 빈약해"} 더 강한 논증을 펼칠 기회를 놓친 것 같습니다.
               </p>
               <p className="mt-1 text-xs text-text-muted">
-                Near-miss: Small improvements in this turn could flip the outcome.
+                아깝다! 이 턴에서 조금만 더 강했으면 결과가 뒤집힐 수 있었습니다.
               </p>
             </div>
           )}
@@ -386,11 +386,11 @@ function BattleAnalysis({
           {worstCriteria.gap > 0 && (
             <div className="rounded-xl border border-danger/30 bg-danger/5 p-4">
               <h3 className="text-xs font-medium uppercase tracking-wider text-danger">
-                Biggest Gap: {CRITERIA.find((c) => c.key === worstCriteria.key)?.label}
+                최대 격차: {CRITERIA.find((c) => c.key === worstCriteria.key)?.label}
               </h3>
               <p className="mt-2 text-sm text-text">
-                You scored <strong>{worstCriteria.myVal}</strong> vs opponent&apos;s{" "}
-                <strong>{worstCriteria.theirVal}</strong> ({worstCriteria.gap} point gap).
+                내 점수 <strong>{worstCriteria.myVal}</strong> vs 상대{" "}
+                <strong>{worstCriteria.theirVal}</strong> ({worstCriteria.gap}점 차이).
               </p>
               <p className="mt-1 text-xs text-text-muted">
                 {CRITERIA_STAT_MAP[worstCriteria.key]?.tip}
@@ -402,7 +402,7 @@ function BattleAnalysis({
           {recommendations.length > 0 && (
             <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
               <h3 className="text-xs font-medium uppercase tracking-wider text-primary">
-                {won ? "Keep Your Edge" : "Recommended Stat Upgrades"}
+                {won ? "우위 유지하기" : "추천 스탯 업그레이드"}
               </h3>
               <div className="mt-3 space-y-2">
                 {recommendations.map(({ stat, reason }) => {
@@ -412,7 +412,7 @@ function BattleAnalysis({
                       <span className="text-lg">{label.emoji}</span>
                       <div>
                         <p className="text-sm font-medium text-text">
-                          {label.en}: {userAgent.stats[stat]} → {Math.min(userAgent.stats[stat] + 2, 10)}
+                          {label.ko}: {userAgent.stats[stat]} → {Math.min(userAgent.stats[stat] + 2, 10)}
                         </p>
                         <p className="text-xs text-text-muted">{reason}</p>
                       </div>
@@ -424,7 +424,7 @@ function BattleAnalysis({
                 href={`/agents/${userAgent.id}/edit`}
                 className="mt-3 inline-block rounded-lg bg-primary px-4 py-1.5 text-xs font-medium text-white transition hover:bg-primary-hover"
               >
-                Edit Agent Stats
+                스탯 수정하기
               </a>
             </div>
           )}
@@ -432,7 +432,7 @@ function BattleAnalysis({
           {/* Per-Turn Summary */}
           <div className="rounded-xl border border-border bg-surface p-4">
             <h3 className="text-xs font-medium uppercase tracking-wider text-text-muted">
-              Turn-by-Turn Assessment
+              턴별 평가
             </h3>
             <div className="mt-3 space-y-2">
               {turnPairs.map((pair) => {
@@ -559,12 +559,12 @@ function RadarChart({ myScore, theirScore }: { myScore: BattleScore; theirScore:
 // ─── Score Comparison Bars ───
 
 const CRITERIA = [
-  { key: "logic" as const, label: "Argumentation" },
-  { key: "rebuttal" as const, label: "Rebuttal" },
-  { key: "consistency" as const, label: "Consistency" },
-  { key: "persuasion" as const, label: "Persuasion" },
-  { key: "expression" as const, label: "Expression" },
-  { key: "factual" as const, label: "Factual Accuracy" },
+  { key: "logic" as const, label: "논증력" },
+  { key: "rebuttal" as const, label: "반박력" },
+  { key: "consistency" as const, label: "일관성" },
+  { key: "persuasion" as const, label: "설득력" },
+  { key: "expression" as const, label: "표현력" },
+  { key: "factual" as const, label: "사실 정확성" },
 ];
 
 function ScoreComparison({
@@ -582,8 +582,8 @@ function ScoreComparison({
     <div className="mt-4 space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between text-xs text-text-muted">
-        <span className="text-success">{nameA} (PRO)</span>
-        <span className="text-danger">{nameB} (CON)</span>
+        <span className="text-success">{nameA} (찬성)</span>
+        <span className="text-danger">{nameB} (반대)</span>
       </div>
 
       {CRITERIA.map(({ key, label }) => {
@@ -618,7 +618,7 @@ function ScoreComparison({
       {/* Totals */}
       <div className="flex items-center justify-between border-t border-border pt-3">
         <span className="text-xl font-bold text-success">{scoreA.total}</span>
-        <span className="text-sm font-medium text-text-muted">TOTAL</span>
+        <span className="text-sm font-medium text-text-muted">합계</span>
         <span className="text-xl font-bold text-danger">{scoreB.total}</span>
       </div>
     </div>
@@ -648,14 +648,14 @@ function ShareCard({
 
   const shareText = [
     `${agentA.name} vs ${agentB.name}`,
-    `Topic: "${battle.topic}" [${difficulty}]`,
-    `Score: ${scoreA}–${scoreB}`,
-    winnerName ? `Winner: ${winnerName}` : "Draw!",
+    `주제: "${battle.topic}" [${difficulty}]`,
+    `점수: ${scoreA}–${scoreB}`,
+    winnerName ? `승자: ${winnerName}` : "무승부!",
     `ELO: ${agentA.name} ${battle.elo_change_a > 0 ? "+" : ""}${battle.elo_change_a} | ${agentB.name} ${battle.elo_change_b > 0 ? "+" : ""}${battle.elo_change_b}`,
     "",
-    `Watch the replay: ${typeof window !== "undefined" ? window.location.href : ""}`,
+    `리플레이 보기: ${typeof window !== "undefined" ? window.location.href : ""}`,
     "",
-    "Agentopia — AI Debate Arena",
+    "Agentopia — AI 토론 아레나",
     "agentopia.online",
   ].join("\n");
 
@@ -664,7 +664,7 @@ function ShareCard({
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({
-          title: `${agentA.name} vs ${agentB.name} — Agentopia`,
+          title: `${agentA.name} vs ${agentB.name} — Agentopia 배틀`,
           text: shareText,
           url: window.location.href,
         });
@@ -709,7 +709,7 @@ function ShareCard({
                   : "bg-warning/15 text-warning"
             }`}
           >
-            {difficulty}
+            {difficulty === "casual" ? "캐주얼" : difficulty === "advanced" ? "고급" : "표준"}
           </span>
         </div>
         <p className="mt-2 text-center text-xs text-text-muted">
@@ -720,7 +720,7 @@ function ShareCard({
         </p>
         <div className="mt-4 flex items-center justify-between">
           <div className="text-center">
-            <p className="text-xs text-success">PRO</p>
+            <p className="text-xs text-success">찬성</p>
             <p className="text-sm font-bold text-text">{agentA.name}</p>
           </div>
           <div className="text-center">
@@ -729,13 +729,13 @@ function ShareCard({
             </p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-danger">CON</p>
+            <p className="text-xs text-danger">반대</p>
             <p className="text-sm font-bold text-text">{agentB.name}</p>
           </div>
         </div>
         {winnerName && (
           <p className="mt-3 text-center text-sm font-bold text-warning">
-            {winnerName} Wins!
+            {winnerName} 승리!
           </p>
         )}
         <p className="mt-2 text-center text-[10px] text-text-muted/50">
@@ -748,7 +748,7 @@ function ShareCard({
         onClick={handleShare}
         className="mt-3 w-full rounded-xl border border-accent/30 bg-accent/5 py-2.5 text-sm font-medium text-accent transition hover:bg-accent/10"
       >
-        {copied ? "Copied to clipboard!" : "Share Battle Result"}
+        {copied ? "클립보드에 복사됨!" : "배틀 결과 공유"}
       </button>
     </div>
   );

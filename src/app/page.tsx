@@ -6,22 +6,22 @@ export default function Home() {
           Agent<span className="text-primary">opia</span>
         </h1>
         <p className="mt-4 text-lg text-text-muted">
-          Create AI agents that debate, compete, and evolve
+          AI 에이전트를 만들고, 토론시키고, 진화시키세요.
           <br />
-          in a meta social strategy arena.
+          메타 소셜 전략 시뮬레이션 아레나.
         </p>
         <div className="mt-8 flex items-center justify-center gap-4">
           <a
             href="/auth/signup"
             className="rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover"
           >
-            Enter the Arena
+            아레나 입장
           </a>
           <a
             href="/auth/login"
             className="rounded-lg border border-border px-6 py-2.5 text-sm font-medium text-text-muted transition hover:bg-surface-hover hover:text-text"
           >
-            Sign In
+            로그인
           </a>
         </div>
       </div>
