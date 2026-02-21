@@ -5,6 +5,7 @@ import { TURN_SEQUENCE } from "@/types/battle";
 import { pickTopicFromDb } from "@/data/topics";
 import { runFullBattle } from "@/lib/battle-engine";
 import { checkNewBadges } from "@/types/badge";
+import { createOpenAICompletion } from "@/lib/ai";
 import { NextResponse } from "next/server";
 
 // NPC system user ID — matches the seed script
@@ -22,7 +23,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  // 2. Check free battle quota (BYOK not yet implemented — block at 0)
+  // 2. Parse request (before quota check — need api_key for BYOK)
+  const body = await request.json();
+  const { agent_id, api_key } = body;
+
+  // 3. Check free battle quota — BYOK bypasses when exhausted
   const { data: profile } = await supabase
     .from("profiles")
     .select("free_battles_remaining")
@@ -30,17 +35,14 @@ export async function POST(request: Request) {
     .single();
 
   const remaining = profile?.free_battles_remaining ?? 0;
-  // TODO: when BYOK is implemented, also check if user has API key registered
-  if (remaining <= 0) {
+  const isByok = remaining <= 0 && typeof api_key === "string" && api_key.startsWith("sk-");
+
+  if (remaining <= 0 && !isByok) {
     return NextResponse.json(
       { error: "FREE_BATTLES_EXHAUSTED", remaining: 0 },
       { status: 403 },
     );
   }
-
-  // 3. Parse request
-  const body = await request.json();
-  const { agent_id } = body;
   if (!agent_id) {
     return NextResponse.json({ error: "agent_id required" }, { status: 400 });
   }
@@ -123,7 +125,7 @@ export async function POST(request: Request) {
       topic,
       topic_category: category,
       status: "in_progress",
-      model_tier: "free",
+      model_tier: isByok ? "premium" : "free",
     })
     .select("id")
     .single();
@@ -138,8 +140,9 @@ export async function POST(request: Request) {
   const battleId = battle.id;
 
   try {
-    // 8. Run the full battle engine
-    const result = await runFullBattle(agentA, agentB, topic);
+    // 8. Run the full battle engine (BYOK uses OpenAI, free uses Fireworks)
+    const completionFn = isByok ? createOpenAICompletion(api_key) : undefined;
+    const result = await runFullBattle(agentA, agentB, topic, completionFn);
 
     // 9. Persist turns
     const turnInserts = result.turns.flatMap((turn, i) => {
@@ -304,13 +307,16 @@ export async function POST(request: Request) {
         .eq("id", playerAgent.id);
     }
 
-    // 16. Decrement free battle counter
-    await admin
-      .from("profiles")
-      .update({ free_battles_remaining: Math.max(0, remaining - 1) })
-      .eq("id", user.id);
+    // 16. Decrement free battle counter (skip for BYOK)
+    const newRemaining = isByok ? remaining : Math.max(0, remaining - 1);
+    if (!isByok) {
+      await admin
+        .from("profiles")
+        .update({ free_battles_remaining: newRemaining })
+        .eq("id", user.id);
+    }
 
-    return NextResponse.json({ battle_id: battleId, free_battles_remaining: remaining - 1 });
+    return NextResponse.json({ battle_id: battleId, free_battles_remaining: newRemaining });
   } catch (err) {
     // Mark battle as aborted on error
     await admin

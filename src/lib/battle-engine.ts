@@ -6,7 +6,7 @@ import {
   buildJudgeSystemPrompt,
   buildJudgeUserPrompt,
 } from "@/data/prompts/battle";
-import { fireworksCompletion } from "./ai";
+import { fireworksCompletion, type CompletionFn } from "./ai";
 
 // ─── Types ───
 
@@ -38,9 +38,10 @@ async function executeTurn(
   turnType: TurnType,
   previousProMessage?: string,
   previousConMessage?: string,
+  complete: CompletionFn = fireworksCompletion,
 ): Promise<TurnResult> {
   // PRO goes first
-  const proResult = await fireworksCompletion({
+  const proResult = await complete({
     systemPrompt: buildAgentSystemPrompt(
       agentPro,
       "pro",
@@ -54,7 +55,7 @@ async function executeTurn(
   });
 
   // CON responds after seeing PRO's message (except turn 1 where they go parallel)
-  const conResult = await fireworksCompletion({
+  const conResult = await complete({
     systemPrompt: buildAgentSystemPrompt(
       agentCon,
       "con",
@@ -80,6 +81,7 @@ async function judgeBattle(
   agentA: Agent,
   agentB: Agent,
   turns: TurnResult[],
+  complete: CompletionFn = fireworksCompletion,
 ): Promise<JudgeResult> {
   const turnData = turns.flatMap((t, i) => {
     const turnType = TURN_SEQUENCE[i].type;
@@ -89,7 +91,7 @@ async function judgeBattle(
     ];
   });
 
-  const result = await fireworksCompletion({
+  const result = await complete({
     systemPrompt: buildJudgeSystemPrompt(topic, agentA.name, agentB.name),
     userPrompt: buildJudgeUserPrompt(turnData),
     maxTokens: 500,
@@ -166,7 +168,9 @@ export async function runFullBattle(
   agentA: Agent, // PRO
   agentB: Agent, // CON
   topic: string,
+  completionFn?: CompletionFn,
 ): Promise<FullBattleResult> {
+  const complete = completionFn ?? fireworksCompletion;
   const turns: TurnResult[] = [];
 
   for (let i = 0; i < TURN_SEQUENCE.length; i++) {
@@ -180,12 +184,13 @@ export async function runFullBattle(
       turnType,
       prevTurn?.pro.content,
       prevTurn?.con.content,
+      complete,
     );
     turns.push(result);
   }
 
   // Judge
-  const judgeResult = await judgeBattle(topic, agentA, agentB, turns);
+  const judgeResult = await judgeBattle(topic, agentA, agentB, turns, complete);
 
   // ELO
   const { changeA, changeB } = calculateElo(

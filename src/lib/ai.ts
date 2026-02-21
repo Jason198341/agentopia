@@ -1,7 +1,10 @@
 const FIREWORKS_URL = "https://api.fireworks.ai/inference/v1/chat/completions";
 const FIREWORKS_MODEL = "accounts/fireworks/models/deepseek-v3p1";
 
-// ─── Key Rotation: round-robin across up to 7 keys ───
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_MODEL = "gpt-4o-mini";
+
+// ─── Key Rotation: round-robin across up to 7 Fireworks keys ───
 
 function getApiKeys(): string[] {
   const keys = [
@@ -27,19 +30,24 @@ function nextApiKey(): string {
   return key;
 }
 
-// ─── Completion ───
+// ─── Types ───
 
-interface CompletionOptions {
+export interface CompletionOptions {
   systemPrompt: string;
   userPrompt: string;
   maxTokens?: number;
   temperature?: number;
 }
 
-interface CompletionResult {
+export interface CompletionResult {
   content: string;
   tokens_used: number;
 }
+
+/** Generic completion function signature — used by battle engine */
+export type CompletionFn = (opts: CompletionOptions) => Promise<CompletionResult>;
+
+// ─── Fireworks (free tier, server-paid) ───
 
 export async function fireworksCompletion({
   systemPrompt,
@@ -77,5 +85,41 @@ export async function fireworksCompletion({
   return {
     content: choice?.message?.content?.trim() ?? "",
     tokens_used: data.usage?.total_tokens ?? 0,
+  };
+}
+
+// ─── OpenAI (BYOK — user's key, never stored) ───
+
+export function createOpenAICompletion(userApiKey: string): CompletionFn {
+  return async ({ systemPrompt, userPrompt, maxTokens = 500, temperature = 0.7 }) => {
+    const res = await fetch(OPENAI_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${userApiKey}`,
+      },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: maxTokens,
+        temperature,
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`OpenAI API error ${res.status}: ${text}`);
+    }
+
+    const data = await res.json();
+    const choice = data.choices?.[0];
+
+    return {
+      content: choice?.message?.content?.trim() ?? "",
+      tokens_used: data.usage?.total_tokens ?? 0,
+    };
   };
 }

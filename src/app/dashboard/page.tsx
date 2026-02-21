@@ -225,13 +225,20 @@ export default async function DashboardPage() {
               </div>
               {isExhausted && (
                 <p className="mt-2 text-xs text-text-muted">
-                  무료 배틀을 모두 사용했습니다. API 키를 등록하면 무제한으로 배틀할 수 있어요!
-                  <span className="ml-1 text-primary">(준비 중)</span>
+                  무료 배틀을 모두 사용했습니다.{" "}
+                  <a href="/settings" className="text-accent hover:underline">
+                    설정에서 API 키를 등록
+                  </a>
+                  하면 무제한으로 배틀할 수 있어요!
                 </p>
               )}
               {isLow && !isExhausted && (
                 <p className="mt-2 text-xs text-text-muted">
-                  {free}판 남았습니다. API 키를 등록하면 무제한 배틀!
+                  {free}판 남았습니다.{" "}
+                  <a href="/settings" className="text-accent hover:underline">
+                    API 키 등록
+                  </a>
+                  하면 무제한 배틀!
                 </p>
               )}
             </section>
@@ -252,6 +259,12 @@ export default async function DashboardPage() {
               className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-warning/30 bg-warning/5 py-3 text-sm font-bold text-warning transition hover:bg-warning/10"
             >
               리더보드
+            </a>
+            <a
+              href="/settings"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-surface py-3 text-sm font-bold text-text-muted transition hover:bg-surface-hover"
+            >
+              설정
             </a>
           </section>
         )}
