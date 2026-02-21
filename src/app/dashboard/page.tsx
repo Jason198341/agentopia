@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   // Fetch profile
   const { data: profile } = await supabase
     .from("profiles")
-    .select("username, display_name, tier, role")
+    .select("username, display_name, tier, role, free_battles_remaining")
     .eq("id", user.id)
     .single();
 
@@ -179,9 +179,68 @@ export default async function DashboardPage() {
           )}
         </section>
 
+        {/* Free Battle Counter */}
+        {(() => {
+          const free = profile?.free_battles_remaining ?? 0;
+          const pct = Math.round((free / 50) * 100);
+          const isLow = free <= 10;
+          const isExhausted = free <= 0;
+          return (
+            <section className={`mt-6 rounded-xl border p-4 ${
+              isExhausted
+                ? "border-danger/40 bg-danger/5"
+                : isLow
+                  ? "border-warning/40 bg-warning/5"
+                  : "border-border bg-surface"
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-text">
+                    무료 배틀
+                  </span>
+                  <span className={`text-lg font-bold ${
+                    isExhausted ? "text-danger" : isLow ? "text-warning" : "text-primary"
+                  }`}>
+                    {free}/50
+                  </span>
+                </div>
+                {isExhausted && (
+                  <span className="rounded bg-danger/20 px-2 py-0.5 text-xs font-bold text-danger">
+                    소진됨
+                  </span>
+                )}
+                {isLow && !isExhausted && (
+                  <span className="rounded bg-warning/20 px-2 py-0.5 text-xs font-bold text-warning">
+                    곧 소진!
+                  </span>
+                )}
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-border">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    isExhausted ? "bg-danger" : isLow ? "bg-warning" : "bg-primary"
+                  }`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              {isExhausted && (
+                <p className="mt-2 text-xs text-text-muted">
+                  무료 배틀을 모두 사용했습니다. API 키를 등록하면 무제한으로 배틀할 수 있어요!
+                  <span className="ml-1 text-primary">(준비 중)</span>
+                </p>
+              )}
+              {isLow && !isExhausted && (
+                <p className="mt-2 text-xs text-text-muted">
+                  {free}판 남았습니다. API 키를 등록하면 무제한 배틀!
+                </p>
+              )}
+            </section>
+          );
+        })()}
+
         {/* Quick Actions */}
         {agents && agents.length > 0 && (
-          <section className="mt-8 flex gap-3">
+          <section className="mt-4 flex gap-3">
             <a
               href="/battle"
               className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-accent/30 bg-accent-dim py-3 text-sm font-bold text-accent transition hover:bg-accent/20"

@@ -10,6 +10,15 @@ export default async function BattlePage() {
 
   if (!user) redirect("/auth/login");
 
+  // Fetch profile for free battle counter
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("free_battles_remaining")
+    .eq("id", user.id)
+    .single();
+
+  const freeBattles = profile?.free_battles_remaining ?? 0;
+
   // Fetch user's active agents
   const { data: agents } = await supabase
     .from("agents")
@@ -44,7 +53,7 @@ export default async function BattlePage() {
             </p>
           </div>
         ) : (
-          <BattleLauncher agents={agents} />
+          <BattleLauncher agents={agents} freeBattles={freeBattles} />
         )}
       </div>
     </div>

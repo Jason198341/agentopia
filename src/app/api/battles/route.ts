@@ -22,7 +22,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  // 2. Parse request
+  // 2. Check free battle quota (BYOK not yet implemented — block at 0)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("free_battles_remaining")
+    .eq("id", user.id)
+    .single();
+
+  const remaining = profile?.free_battles_remaining ?? 0;
+  // TODO: when BYOK is implemented, also check if user has API key registered
+  if (remaining <= 0) {
+    return NextResponse.json(
+      { error: "FREE_BATTLES_EXHAUSTED", remaining: 0 },
+      { status: 403 },
+    );
+  }
+
+  // 3. Parse request
   const body = await request.json();
   const { agent_id } = body;
   if (!agent_id) {
@@ -288,7 +304,13 @@ export async function POST(request: Request) {
         .eq("id", playerAgent.id);
     }
 
-    return NextResponse.json({ battle_id: battleId });
+    // 16. Decrement free battle counter
+    await admin
+      .from("profiles")
+      .update({ free_battles_remaining: Math.max(0, remaining - 1) })
+      .eq("id", user.id);
+
+    return NextResponse.json({ battle_id: battleId, free_battles_remaining: remaining - 1 });
   } catch (err) {
     // Mark battle as aborted on error
     await admin

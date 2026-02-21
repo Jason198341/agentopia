@@ -27,7 +27,11 @@ export const useBattleStore = create<BattleState>((set) => ({
       const data = await res.json();
 
       if (!res.ok) {
-        set({ error: data.error ?? "Battle failed", loading: false });
+        const msg =
+          data.error === "FREE_BATTLES_EXHAUSTED"
+            ? "무료 배틀을 모두 사용했습니다. API 키를 등록하면 무제한으로 플레이할 수 있어요!"
+            : data.error ?? "Battle failed";
+        set({ error: msg, loading: false });
         return null;
       }
 

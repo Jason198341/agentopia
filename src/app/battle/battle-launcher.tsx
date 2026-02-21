@@ -12,10 +12,12 @@ interface AgentSummary {
   losses: number;
 }
 
-export function BattleLauncher({ agents }: { agents: AgentSummary[] }) {
+export function BattleLauncher({ agents, freeBattles }: { agents: AgentSummary[]; freeBattles: number }) {
   const router = useRouter();
   const { loading, error, startBattle } = useBattleStore();
   const [selectedId, setSelectedId] = useState(agents[0]?.id ?? "");
+  const isExhausted = freeBattles <= 0;
+  const isLow = freeBattles > 0 && freeBattles <= 10;
 
   async function handleStartBattle() {
     if (!selectedId) return;
@@ -27,6 +29,33 @@ export function BattleLauncher({ agents }: { agents: AgentSummary[] }) {
 
   return (
     <div className="mt-6">
+      {/* Free Battle Counter */}
+      <div className={`mb-4 rounded-xl border p-3 ${
+        isExhausted ? "border-danger/40 bg-danger/5" : isLow ? "border-warning/40 bg-warning/5" : "border-border bg-surface"
+      }`}>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-text-muted">무료 배틀 잔여</span>
+          <span className={`text-sm font-bold ${
+            isExhausted ? "text-danger" : isLow ? "text-warning" : "text-primary"
+          }`}>
+            {freeBattles}/50
+          </span>
+        </div>
+        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-border">
+          <div
+            className={`h-full rounded-full ${
+              isExhausted ? "bg-danger" : isLow ? "bg-warning" : "bg-primary"
+            }`}
+            style={{ width: `${Math.round((freeBattles / 50) * 100)}%` }}
+          />
+        </div>
+        {isExhausted && (
+          <p className="mt-2 text-xs text-danger">
+            무료 배틀을 모두 사용했습니다. API 키 등록 시 무제한! <span className="text-text-muted">(준비 중)</span>
+          </p>
+        )}
+      </div>
+
       {/* Agent Selector */}
       <div className="space-y-3">
         {agents.map((agent) => (
@@ -61,7 +90,7 @@ export function BattleLauncher({ agents }: { agents: AgentSummary[] }) {
       {/* Launch Button */}
       <button
         onClick={handleStartBattle}
-        disabled={!selectedId || loading}
+        disabled={!selectedId || loading || isExhausted}
         className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-lg font-bold text-white transition hover:bg-primary-hover disabled:opacity-50"
       >
         {loading ? (
@@ -69,6 +98,8 @@ export function BattleLauncher({ agents }: { agents: AgentSummary[] }) {
             <LoadingSpinner />
             <span>상대 탐색 & 토론 중...</span>
           </>
+        ) : isExhausted ? (
+          "무료 배틀 소진 — API 키 등록 필요"
         ) : (
           "배틀 시작"
         )}
