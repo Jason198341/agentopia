@@ -303,7 +303,7 @@ export function AgentDetail({
         {/* Evolved Traits (auto-earned from battles) */}
         {(() => {
           const traitEntries = Object.entries(agent.traits).filter(
-            ([key]) => key !== "_badges",
+            ([key]) => !key.startsWith("_"),
           );
           const TRAIT_META: Record<string, { emoji: string; desc: string }> = {
             Confidence: { emoji: "💪", desc: "5연승 달성" },
