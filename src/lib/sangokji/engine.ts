@@ -335,8 +335,9 @@ export async function runTurn(
 export async function runTurns(
   state: SGGameState,
   count: number
-): Promise<{ state: SGGameState; allEvents: TurnEvent[][] }> {
+): Promise<{ state: SGGameState; allEvents: TurnEvent[][]; snapshots: SGGameState[] }> {
   const allEvents: TurnEvent[][] = [];
+  const snapshots: SGGameState[] = [];
 
   for (let i = 0; i < count; i++) {
     if (state.status !== 'running') break;
@@ -344,7 +345,8 @@ export async function runTurns(
     const { state: newState, events } = await runTurn(state);
     state = newState;
     allEvents.push(events);
+    snapshots.push(JSON.parse(JSON.stringify(state))); // deep clone per turn
   }
 
-  return { state, allEvents };
+  return { state, allEvents, snapshots };
 }

@@ -24,6 +24,7 @@ export function GameViewerClient({ gameId, initialState, initialTurnEvents }: Pr
   const [turnEvents, setTurnEvents] = useState(initialTurnEvents);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [playingTurn, setPlayingTurn] = useState<number | null>(null);
   // Hard lock: prevents ANY concurrent API call regardless of React rendering lag
   const runningRef = useRef(false);
 
@@ -49,16 +50,28 @@ export function GameViewerClient({ gameId, initialState, initialTurnEvents }: Pr
         return;
       }
 
-      setState(data.state);
+      // Replay each turn snapshot with 800ms delay so the map animates
+      const snapshots: SGGameState[] = data.snapshots ?? [data.state];
+      const allEvents: TurnEvent[][] = data.events ?? [];
+      const startTurn = state.turn;
 
-      const newTurnEvents: { turn: number; events: TurnEvent[] }[] = (
-        data.events as TurnEvent[][]
-      ).map((events, i) => ({
-        turn: state.turn + i + 1,
-        events,
-      }));
+      for (let i = 0; i < snapshots.length; i++) {
+        setPlayingTurn(startTurn + i + 1);
+        setState(snapshots[i]);
 
-      setTurnEvents((prev) => [...prev, ...newTurnEvents]);
+        if (allEvents[i]) {
+          setTurnEvents((prev) => [
+            ...prev,
+            { turn: startTurn + i + 1, events: allEvents[i] },
+          ]);
+        }
+
+        if (i < snapshots.length - 1) {
+          await new Promise<void>((resolve) => setTimeout(resolve, 800));
+        }
+      }
+
+      setPlayingTurn(null);
       runningRef.current = false;
     });
   }
@@ -100,7 +113,11 @@ export function GameViewerClient({ gameId, initialState, initialTurnEvents }: Pr
                 disabled={isPending}
                 className="rounded-lg bg-primary px-4 py-1.5 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50 transition"
               >
-                {isPending ? 'AI 결정 중...' : '10턴 실행'}
+                {playingTurn !== null
+                  ? `▶ ${playingTurn}턴 재생 중...`
+                  : isPending
+                  ? 'AI 결정 중...'
+                  : '10턴 실행'}
               </button>
             </>
           )}

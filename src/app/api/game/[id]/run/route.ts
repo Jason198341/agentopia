@@ -37,7 +37,7 @@ export async function POST(
   // Run turns
   const currentState = game.current_state as SGGameState;
   const snapshotTurn = game.current_turn as number;
-  const { state: newState, allEvents } = await runTurns(currentState, turns);
+  const { state: newState, allEvents, snapshots } = await runTurns(currentState, turns);
 
   // Optimistic lock: only update if current_turn hasn't changed since we read it.
   // This prevents duplicate events from concurrent requests.
@@ -88,6 +88,7 @@ export async function POST(
   return NextResponse.json({
     state: newState,
     events: allEvents,
+    snapshots,
     completed: newState.status === 'completed',
   });
 }
