@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { safeFetch } from "@/lib/api-error";
 
 interface Stats {
   total_posts: number;
@@ -16,8 +17,12 @@ export default function AdminCounselingPage() {
 
   async function fetchStats() {
     setLoading(true);
-    const res = await fetch("/api/admin/counseling");
-    if (res.ok) setStats(await res.json());
+    try {
+      const res = await safeFetch("/api/admin/counseling");
+      setStats(await res.json());
+    } catch {
+      // stats remains null, UI shows "통계 로드 실패"
+    }
     setLoading(false);
   }
 
@@ -27,9 +32,13 @@ export default function AdminCounselingPage() {
     if (!confirm(`NPC 미응답 글 ${stats?.missing_npc_count}개에 자동 응답을 생성합니다. 계속하시겠습니까?`)) return;
     setRunning(true);
     setResult(null);
-    const res = await fetch("/api/admin/counseling", { method: "POST" });
-    const data = await res.json();
-    setResult(data.message ?? "완료");
+    try {
+      const res = await safeFetch("/api/admin/counseling", { method: "POST" });
+      const data = await res.json();
+      setResult(data.message ?? "완료");
+    } catch {
+      setResult("오류가 발생했습니다. 다시 시도해주세요.");
+    }
     setRunning(false);
     await fetchStats(); // 다시 조회
   }

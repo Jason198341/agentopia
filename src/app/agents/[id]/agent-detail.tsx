@@ -402,7 +402,7 @@ function EloChart({ points }: { points: EloPoint[] }) {
 
   return (
     <div className="mt-3 rounded-xl border border-border bg-surface p-3">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 140 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 140 }} aria-hidden="true">
         {/* Grid lines */}
         {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
           const y = PY + frac * (H - PY * 2);
@@ -554,7 +554,7 @@ function MiniSparkline({
   });
 
   return (
-    <svg width={W} height={H} className="shrink-0">
+    <svg width={W} height={H} className="shrink-0" aria-hidden="true">
       <polyline
         points={coords.join(" ")}
         fill="none"

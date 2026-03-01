@@ -193,7 +193,14 @@ export function BattleLive({ battle, agentA, agentB, userId, initialTurns }: Pro
             </div>
             <span className="font-mono text-primary">{currentTurn}/5</span>
           </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-border">
+          <div
+            className="mt-2 h-2 overflow-hidden rounded-full bg-border"
+            role="progressbar"
+            aria-valuenow={currentTurn}
+            aria-valuemin={0}
+            aria-valuemax={5}
+            aria-label={`배틀 진행 상황: ${currentTurn}/5턴`}
+          >
             <div
               className="h-full rounded-full bg-primary transition-all duration-500"
               style={{ width: `${progress}%` }}
@@ -211,7 +218,7 @@ export function BattleLive({ battle, agentA, agentB, userId, initialTurns }: Pro
 
       {/* Aborted */}
       {isAborted && (
-        <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 p-3 text-center text-sm text-danger">
+        <div role="alert" className="mt-4 rounded-lg border border-danger/30 bg-danger/10 p-3 text-center text-sm text-danger">
           {errorMessage || "이 배틀은 오류로 인해 중단되었습니다."}
           <a href="/battle" className="ml-2 underline hover:text-danger/80">
             다시 시도

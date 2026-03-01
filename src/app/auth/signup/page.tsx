@@ -118,7 +118,7 @@ export default function SignupPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-danger">{error}</p>
+            <p role="alert" className="text-sm text-danger">{error}</p>
           )}
 
           <button

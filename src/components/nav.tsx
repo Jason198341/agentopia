@@ -73,8 +73,9 @@ export function Nav() {
           onClick={() => setOpen(!open)}
           className="rounded-lg p-1.5 text-text-muted hover:bg-surface-hover sm:hidden"
           aria-label="Menu"
+          aria-expanded={open}
         >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
             {open ? (
               <path d="M5 5L15 15M15 5L5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             ) : (

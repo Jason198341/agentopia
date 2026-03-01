@@ -96,11 +96,11 @@ export default function NewAgentPage() {
 
           {/* ── 이름 ── */}
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-text-muted">
+            <label htmlFor="agent-name" className="block text-sm font-medium text-text-muted">
               에이전트 이름
             </label>
             <input
-              id="name"
+              id="agent-name"
               type="text"
               required
               maxLength={30}
@@ -172,13 +172,15 @@ export default function NewAgentPage() {
             <div className="mt-4 space-y-4">
               {(Object.keys(TURN_LABELS) as (keyof TurnStrategies)[]).map((key) => {
                 const label = TURN_LABELS[key];
+                const inputId = `strategy-${key}`;
                 return (
                   <div key={key}>
                     <div className="flex items-baseline gap-2">
-                      <p className="text-xs font-semibold text-text">{label.ko}</p>
+                      <label htmlFor={inputId} className="text-xs font-semibold text-text">{label.ko}</label>
                       <p className="text-[10px] text-text-muted">{label.guide}</p>
                     </div>
                     <textarea
+                      id={inputId}
                       maxLength={200}
                       rows={2}
                       value={turnStrategies[key]}
@@ -327,7 +329,7 @@ export default function NewAgentPage() {
             />
           </div>
 
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p role="alert" className="text-sm text-danger">{error}</p>}
 
           <button
             type="submit"

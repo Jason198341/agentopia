@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { safeFetch } from "@/lib/api-error";
 
 type Difficulty = "casual" | "standard" | "advanced";
 
@@ -52,52 +53,60 @@ export function TopicsManager({ initialTopics }: { initialTopics: Topic[] }) {
   };
 
   async function handleToggleActive(t: Topic) {
-    const res = await fetch("/api/admin/topics", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: t.id, is_active: !t.is_active }),
-    });
-    if (res.ok) {
+    try {
+      const res = await safeFetch("/api/admin/topics", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: t.id, is_active: !t.is_active }),
+      });
       const updated = await res.json();
       setTopics((prev) => prev.map((p) => (p.id === t.id ? updated : p)));
+    } catch {
+      // silently ignore: optimistic toggle not applied
     }
   }
 
   async function handleSaveEdit(t: Topic, newText: string) {
     if (newText === t.topic) { setEditingId(null); return; }
-    const res = await fetch("/api/admin/topics", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: t.id, topic: newText }),
-    });
-    if (res.ok) {
+    try {
+      const res = await safeFetch("/api/admin/topics", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: t.id, topic: newText }),
+      });
       const updated = await res.json();
       setTopics((prev) => prev.map((p) => (p.id === t.id ? updated : p)));
+    } catch {
+      // silently ignore: edit not applied
     }
     setEditingId(null);
   }
 
   async function handleDelete(id: string) {
     if (!confirm("이 주제를 삭제하시겠습니까?")) return;
-    const res = await fetch(`/api/admin/topics?id=${id}`, { method: "DELETE" });
-    if (res.ok) {
+    try {
+      await safeFetch(`/api/admin/topics?id=${id}`, { method: "DELETE" });
       setTopics((prev) => prev.filter((p) => p.id !== id));
+    } catch {
+      // silently ignore: deletion not applied
     }
   }
 
   async function handleAdd() {
     if (!newTopic.topic.trim()) return;
     setSaving(true);
-    const res = await fetch("/api/admin/topics", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newTopic),
-    });
-    if (res.ok) {
+    try {
+      const res = await safeFetch("/api/admin/topics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newTopic),
+      });
       const created = await res.json();
       setTopics((prev) => [...prev, created]);
       setNewTopic({ topic: "", category: "technology", difficulty: "standard" });
       setShowAddForm(false);
+    } catch {
+      // silently ignore: topic not added
     }
     setSaving(false);
   }
@@ -141,7 +150,9 @@ export function TopicsManager({ initialTopics }: { initialTopics: Topic[] }) {
       {showAddForm && (
         <div className="mt-4 rounded-xl border border-primary/30 bg-surface p-4">
           <h3 className="mb-3 text-sm font-bold text-text">새 주제 추가</h3>
+          <label htmlFor="new-topic-text" className="sr-only">토론 주제</label>
           <input
+            id="new-topic-text"
             type="text"
             placeholder="토론 주제 입력..."
             value={newTopic.topic}
@@ -149,7 +160,9 @@ export function TopicsManager({ initialTopics }: { initialTopics: Topic[] }) {
             className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text placeholder:text-text-muted"
           />
           <div className="mt-2 flex gap-2">
+            <label htmlFor="new-topic-category" className="sr-only">카테고리</label>
             <select
+              id="new-topic-category"
               value={newTopic.category}
               onChange={(e) => setNewTopic((p) => ({ ...p, category: e.target.value }))}
               className="rounded-lg border border-border bg-bg px-2 py-1.5 text-sm text-text"
@@ -158,7 +171,9 @@ export function TopicsManager({ initialTopics }: { initialTopics: Topic[] }) {
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
+            <label htmlFor="new-topic-difficulty" className="sr-only">난이도</label>
             <select
+              id="new-topic-difficulty"
               value={newTopic.difficulty}
               onChange={(e) => setNewTopic((p) => ({ ...p, difficulty: e.target.value as Difficulty }))}
               className="rounded-lg border border-border bg-bg px-2 py-1.5 text-sm text-text"
@@ -192,7 +207,9 @@ export function TopicsManager({ initialTopics }: { initialTopics: Topic[] }) {
           </button>
         ))}
         <span className="mx-1 text-text-muted">|</span>
+        <label htmlFor="cat-filter" className="sr-only">카테고리 필터</label>
         <select
+          id="cat-filter"
           value={catFilter}
           onChange={(e) => setCatFilter(e.target.value)}
           className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-text"
@@ -313,7 +330,9 @@ function EditableCell({
   const [text, setText] = useState(value);
   return (
     <div className="flex items-center gap-1">
+      <label htmlFor="editable-topic-cell" className="sr-only">주제 수정</label>
       <input
+        id="editable-topic-cell"
         autoFocus
         value={text}
         onChange={(e) => setText(e.target.value)}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { safeFetch, NetworkError, ApiError } from '@/lib/api-error';
 
 interface GameRecord {
   id: string;
@@ -26,11 +27,13 @@ const AGENT_NAMES: Record<string, string> = {
 export function GameLobbyClient({ games }: Props) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   async function handleCreate() {
     setCreating(true);
+    setCreateError(null);
     try {
-      const res = await fetch('/api/game/create', {
+      const res = await safeFetch('/api/game/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
@@ -38,6 +41,14 @@ export function GameLobbyClient({ games }: Props) {
       const data = await res.json();
       if (data.game_id) {
         router.push(`/game/${data.game_id}`);
+      }
+    } catch (err) {
+      if (err instanceof NetworkError) {
+        setCreateError(err.message);
+      } else if (err instanceof ApiError) {
+        setCreateError(`게임 생성 실패 (${err.status})`);
+      } else {
+        setCreateError('알 수 없는 오류가 발생했습니다.');
       }
     } finally {
       setCreating(false);
@@ -64,6 +75,12 @@ export function GameLobbyClient({ games }: Props) {
           {creating ? '게임 생성 중...' : '새 전쟁 시작'}
         </button>
       </div>
+
+      {createError && (
+        <div role="alert" className="mb-4 rounded-lg border border-danger/30 bg-danger/10 px-4 py-2 text-sm text-danger">
+          {createError}
+        </div>
+      )}
 
       {/* Factions preview */}
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">

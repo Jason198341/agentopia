@@ -42,8 +42,9 @@ export function CreatePostForm({ agents }: Props) {
 
       {/* Agent Selection */}
       <div>
-        <label className="text-sm font-medium text-text">정리할 에이전트 선택</label>
+        <label htmlFor="counseling-agent" className="text-sm font-medium text-text">정리할 에이전트 선택</label>
         <select
+          id="counseling-agent"
           value={agentId}
           onChange={(e) => setAgentId(e.target.value)}
           className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none"
@@ -61,8 +62,9 @@ export function CreatePostForm({ agents }: Props) {
 
       {/* Raw Input */}
       <div>
-        <label className="text-sm font-medium text-text">감정 쏟기</label>
+        <label htmlFor="counseling-raw-input" className="text-sm font-medium text-text">감정 쏟기</label>
         <textarea
+          id="counseling-raw-input"
           value={rawInput}
           onChange={(e) => handleInputChange(e.target.value)}
           placeholder="지금 느끼는 감정을 자유롭게 적어보세요. 정리되지 않아도 괜찮습니다..."
@@ -78,7 +80,7 @@ export function CreatePostForm({ agents }: Props) {
 
       {/* Error */}
       {postError && (
-        <div className="rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger">
+        <div role="alert" className="rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger">
           {postError}
         </div>
       )}

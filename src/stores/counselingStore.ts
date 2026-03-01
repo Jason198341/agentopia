@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { checkDailyLimit, incrementDailyCount } from "@/lib/rate-limiter";
+import { safeFetch, ApiError, NetworkError } from "@/lib/api-error";
 
 interface CounselingState {
   // Create post
@@ -41,42 +43,80 @@ export const useCounselingStore = create<CounselingState>((set) => ({
 
   createPost: async (rawInput: string, agentId: string) => {
     set({ postLoading: true, postError: null });
+
+    // Rate limit check: 1 AI counseling post per day (client-side convenience guard)
+    const limit = checkDailyLimit("counseling_post");
+    if (!limit.allowed) {
+      set({
+        postError: "일일 AI 사용 한도(1회)를 초과했습니다. 내일 다시 시도해주세요.",
+        postLoading: false,
+      });
+      return null;
+    }
+
     try {
-      const res = await fetch("/api/counseling/posts", {
+      const res = await safeFetch("/api/counseling/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ raw_input: rawInput, agent_id: agentId }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        set({ postError: mapError(data), postLoading: false });
-        return null;
-      }
+
+      // Increment daily counter after a successful post
+      incrementDailyCount("counseling_post");
+
       set({ postLoading: false });
       return data.post_id as string;
-    } catch {
-      set({ postError: "네트워크 오류가 발생했습니다.", postLoading: false });
+    } catch (err) {
+      if (err instanceof NetworkError) {
+        set({ postError: err.message, postLoading: false });
+      } else if (err instanceof ApiError) {
+        let parsed: Record<string, unknown> = {};
+        try { parsed = JSON.parse(err.message); } catch { /* raw text */ }
+        set({ postError: mapError(parsed as { error?: string }), postLoading: false });
+      } else {
+        set({ postError: "알 수 없는 오류가 발생했습니다.", postLoading: false });
+      }
       return null;
     }
   },
 
   createResponse: async (postId: string, agentId: string) => {
     set({ responseLoading: true, responseError: null });
+
+    // Rate limit check: 1 AI counseling response per day (client-side convenience guard)
+    const limit = checkDailyLimit("counseling_response");
+    if (!limit.allowed) {
+      set({
+        responseError: "일일 AI 사용 한도(1회)를 초과했습니다. 내일 다시 시도해주세요.",
+        responseLoading: false,
+      });
+      return null;
+    }
+
     try {
-      const res = await fetch("/api/counseling/responses", {
+      const res = await safeFetch("/api/counseling/responses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ post_id: postId, agent_id: agentId }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        set({ responseError: mapError(data), responseLoading: false });
-        return null;
-      }
+
+      // Increment daily counter after a successful response
+      incrementDailyCount("counseling_response");
+
       set({ responseLoading: false });
       return data.response_id as string;
-    } catch {
-      set({ responseError: "네트워크 오류가 발생했습니다.", responseLoading: false });
+    } catch (err) {
+      if (err instanceof NetworkError) {
+        set({ responseError: err.message, responseLoading: false });
+      } else if (err instanceof ApiError) {
+        let parsed: Record<string, unknown> = {};
+        try { parsed = JSON.parse(err.message); } catch { /* raw text */ }
+        set({ responseError: mapError(parsed as { error?: string }), responseLoading: false });
+      } else {
+        set({ responseError: "알 수 없는 오류가 발생했습니다.", responseLoading: false });
+      }
       return null;
     }
   },
@@ -84,20 +124,23 @@ export const useCounselingStore = create<CounselingState>((set) => ({
   selectBest: async (postId: string, responseId: string) => {
     set({ bestLoading: true, bestError: null });
     try {
-      const res = await fetch("/api/counseling/best", {
+      await safeFetch("/api/counseling/best", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ post_id: postId, response_id: responseId }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        set({ bestError: mapError(data), bestLoading: false });
-        return false;
-      }
       set({ bestLoading: false });
       return true;
-    } catch {
-      set({ bestError: "네트워크 오류가 발생했습니다.", bestLoading: false });
+    } catch (err) {
+      if (err instanceof NetworkError) {
+        set({ bestError: err.message, bestLoading: false });
+      } else if (err instanceof ApiError) {
+        let parsed: Record<string, unknown> = {};
+        try { parsed = JSON.parse(err.message); } catch { /* raw text */ }
+        set({ bestError: mapError(parsed as { error?: string }), bestLoading: false });
+      } else {
+        set({ bestError: "알 수 없는 오류가 발생했습니다.", bestLoading: false });
+      }
       return false;
     }
   },

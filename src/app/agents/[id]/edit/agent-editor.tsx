@@ -155,13 +155,15 @@ export function AgentEditor({ agent }: { agent: Agent }) {
             <div className="mt-4 space-y-4">
               {(Object.keys(TURN_LABELS) as (keyof TurnStrategies)[]).map((key) => {
                 const label = TURN_LABELS[key];
+                const inputId = `edit-strategy-${key}`;
                 return (
                   <div key={key}>
                     <div className="flex items-baseline gap-2">
-                      <p className="text-xs font-semibold text-text">{label.ko}</p>
+                      <label htmlFor={inputId} className="text-xs font-semibold text-text">{label.ko}</label>
                       <p className="text-[10px] text-text-muted">{label.guide}</p>
                     </div>
                     <textarea
+                      id={inputId}
                       maxLength={200}
                       rows={2}
                       value={turnStrategies[key]}
@@ -323,7 +325,7 @@ export function AgentEditor({ agent }: { agent: Agent }) {
             </div>
           )}
 
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p role="alert" className="text-sm text-danger">{error}</p>}
 
           <button
             type="submit"

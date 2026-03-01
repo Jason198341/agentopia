@@ -5,6 +5,7 @@ import { GameMap } from '@/components/game/GameMap';
 import { AgentPanel } from '@/components/game/AgentPanel';
 import { TurnLog } from '@/components/game/TurnLog';
 import type { SGGameState, TurnEvent } from '@/types/sangokji';
+import { safeFetch, NetworkError, ApiError } from '@/lib/api-error';
 
 const AGENT_COLORS: Record<string, string> = {
   agent_0: '#ef4444',
@@ -36,23 +37,31 @@ export function GameViewerClient({ gameId, initialState, initialTurnEvents }: Pr
     runningRef.current = true;
     setError(null);
     startTransition(async () => {
-      const res = await fetch(`/api/game/${gameId}/run`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turns: count }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error ?? '오류가 발생했습니다.');
+      let data: Record<string, unknown>;
+      try {
+        const res = await safeFetch(`/api/game/${gameId}/run`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ turns: count }),
+        });
+        data = await res.json();
+      } catch (err) {
+        if (err instanceof NetworkError) {
+          setError(err.message);
+        } else if (err instanceof ApiError) {
+          let parsed: Record<string, unknown> = {};
+          try { parsed = JSON.parse(err.message); } catch { /* raw text */ }
+          setError((parsed.error as string) ?? `오류가 발생했습니다. (${err.status})`);
+        } else {
+          setError('알 수 없는 오류가 발생했습니다.');
+        }
         runningRef.current = false;
         return;
       }
 
       // Replay each turn snapshot with 800ms delay so the map animates
-      const snapshots: SGGameState[] = data.snapshots ?? [data.state];
-      const allEvents: TurnEvent[][] = data.events ?? [];
+      const snapshots = (data.snapshots as SGGameState[] | undefined) ?? [data.state as SGGameState];
+      const allEvents = (data.events as TurnEvent[][] | undefined) ?? [];
       const startTurn = state.turn;
 
       for (let i = 0; i < snapshots.length; i++) {
@@ -125,7 +134,14 @@ export function GameViewerClient({ gameId, initialState, initialTurnEvents }: Pr
       </div>
 
       {/* Progress bar */}
-      <div className="mb-4 rounded-full bg-surface h-2 overflow-hidden">
+      <div
+        className="mb-4 rounded-full bg-surface h-2 overflow-hidden"
+        role="progressbar"
+        aria-valuenow={state.turn}
+        aria-valuemin={0}
+        aria-valuemax={state.max_turns}
+        aria-label={`게임 진행 상황: ${state.turn}/${state.max_turns}턴`}
+      >
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{
@@ -158,7 +174,7 @@ export function GameViewerClient({ gameId, initialState, initialTurnEvents }: Pr
 
       {/* Error */}
       {error && (
-        <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2 text-sm text-red-400">
+        <div role="alert" className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2 text-sm text-red-400">
           {error}
         </div>
       )}

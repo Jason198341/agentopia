@@ -98,7 +98,7 @@ export function BattleLauncher({ agents, freeBattles }: { agents: AgentSummary[]
 
       {/* Error */}
       {error && (
-        <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
+        <div role="alert" className="mt-4 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
           {error}
         </div>
       )}
@@ -134,7 +134,7 @@ export function BattleLauncher({ agents, freeBattles }: { agents: AgentSummary[]
 
 function LoadingSpinner() {
   return (
-    <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+    <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle
         className="opacity-25"
         cx="12"
@@ -154,7 +154,7 @@ function LoadingSpinner() {
 
 function KeyIcon() {
   return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
       <path
         fillRule="evenodd"
         d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"

@@ -187,14 +187,21 @@ export function PostDetail({
 
       {/* Response Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="respond-modal-title"
+        >
           <div className="w-full max-w-sm rounded-xl border border-border bg-bg p-6">
-            <h3 className="text-lg font-bold text-text">상담 에이전트 선택</h3>
+            <h3 id="respond-modal-title" className="text-lg font-bold text-text">상담 에이전트 선택</h3>
             <p className="mt-1 text-sm text-text-muted">
               어떤 에이전트로 상담할까요?
             </p>
 
+            <label htmlFor="modal-agent-select" className="sr-only">에이전트 선택</label>
             <select
+              id="modal-agent-select"
               value={selectedAgentId}
               onChange={(e) => setSelectedAgentId(e.target.value)}
               className="mt-4 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none"
@@ -205,7 +212,7 @@ export function PostDetail({
             </select>
 
             {responseError && (
-              <p className="mt-2 text-sm text-danger">{responseError}</p>
+              <p role="alert" className="mt-2 text-sm text-danger">{responseError}</p>
             )}
 
             <div className="mt-4 flex gap-2">
@@ -303,7 +310,7 @@ export function PostDetail({
       </div>
 
       {bestError && (
-        <p className="mt-2 text-sm text-danger">{bestError}</p>
+        <p role="alert" className="mt-2 text-sm text-danger">{bestError}</p>
       )}
     </div>
   );

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { PROVIDER_CONFIG, DEFAULT_MODELS } from "@/lib/providers";
 import type { Provider } from "@/lib/providers";
+import { safeFetch, NetworkError } from "@/lib/api-error";
 
 const PROVIDERS: Provider[] = ["openai", "claude", "gemini"];
 
@@ -74,7 +75,7 @@ export function ApiKeySettings({ freeBattles }: { freeBattles: number }) {
     setErrorMsg("");
 
     try {
-      const res = await fetch("/api/validate-key", {
+      const res = await safeFetch("/api/validate-key", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ api_key: keyInput.trim(), provider: activeProvider }),
@@ -92,9 +93,13 @@ export function ApiKeySettings({ freeBattles }: { freeBattles: number }) {
         setStatus("invalid");
         setErrorMsg(data.error ?? "Invalid key");
       }
-    } catch {
+    } catch (err) {
       setStatus("invalid");
-      setErrorMsg("네트워크 오류");
+      if (err instanceof NetworkError) {
+        setErrorMsg(err.message);
+      } else {
+        setErrorMsg("키 검증 중 오류가 발생했습니다.");
+      }
     } finally {
       setValidating(false);
     }
@@ -160,14 +165,16 @@ export function ApiKeySettings({ freeBattles }: { freeBattles: number }) {
         <div className="p-5">
           {/* Model Selector */}
           <div className="mb-5">
-            <label className="text-sm font-semibold text-text-muted uppercase tracking-wider">
+            <p id="model-selector-label" className="text-sm font-semibold text-text-muted uppercase tracking-wider">
               모델 선택
-            </label>
-            <div className="mt-2 grid gap-2">
+            </p>
+            <div className="mt-2 grid gap-2" role="radiogroup" aria-labelledby="model-selector-label">
               {config.models.map((m) => (
                 <button
                   key={m.id}
                   onClick={() => handleModelChange(m.id)}
+                  role="radio"
+                  aria-checked={selectedModel === m.id}
                   className={`flex items-center justify-between rounded-lg border px-4 py-2.5 text-left transition ${
                     selectedModel === m.id
                       ? "border-primary bg-primary-dim text-text"
@@ -186,7 +193,7 @@ export function ApiKeySettings({ freeBattles }: { freeBattles: number }) {
 
           {/* API Key Input */}
           <div>
-            <label className="text-sm font-semibold text-text-muted uppercase tracking-wider">
+            <label htmlFor="api-key-input" className="text-sm font-semibold text-text-muted uppercase tracking-wider">
               {config.name} API 키
             </label>
             <p className="mt-1 text-sm text-text-muted">
@@ -202,6 +209,7 @@ export function ApiKeySettings({ freeBattles }: { freeBattles: number }) {
                   </div>
                   <button
                     onClick={handleRemove}
+                    aria-label={`${config.name} API 키 삭제`}
                     className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-2.5 text-sm font-medium text-danger hover:bg-danger/20 transition"
                   >
                     삭제
@@ -215,6 +223,7 @@ export function ApiKeySettings({ freeBattles }: { freeBattles: number }) {
               <div className="mt-3">
                 <div className="flex gap-2">
                   <input
+                    id="api-key-input"
                     type="password"
                     value={keyInput}
                     onChange={(e) => setKeyInput(e.target.value)}
@@ -231,7 +240,7 @@ export function ApiKeySettings({ freeBattles }: { freeBattles: number }) {
                 </div>
 
                 {status === "invalid" && (
-                  <p className="mt-2 text-sm text-danger">{errorMsg}</p>
+                  <p role="alert" className="mt-2 text-sm text-danger">{errorMsg}</p>
                 )}
               </div>
             )}
@@ -307,7 +316,7 @@ export function ApiKeySettings({ freeBattles }: { freeBattles: number }) {
 
 function CheckIcon() {
   return (
-    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
       <path
         fillRule="evenodd"
         d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
